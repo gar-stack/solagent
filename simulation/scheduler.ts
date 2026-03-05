@@ -14,7 +14,7 @@ import { connection } from "../utils/connection";
 const DEFAULT_INTERVAL_MS = 5000;
 
 // Runs a single agent cycle: perceive → decide → act → emit
-async function runAgentCycle(agent: any, targetAddress: string, agentId: number) {
+async function runAgentCycle(agent: any, targetAddress: string, agentId: string) {
     try {
         console.log(`\n[Agent ${agentId}] --- Cycle Start ---`);
 
@@ -41,7 +41,7 @@ async function runAgentCycle(agent: any, targetAddress: string, agentId: number)
 export function scheduleAgent(
     agent: any,
     targetAddress: string,
-    agentId: number,
+    agentId: string,
     intervalMs: number = DEFAULT_INTERVAL_MS
 ): { stop: () => void } {
     console.log(`[Scheduler] Agent ${agentId} scheduled every ${intervalMs}ms`);
@@ -120,7 +120,7 @@ export async function startSimulation() {
     // --- Schedule each agent as an independent task ---
     const handles = agents.map((agent, index) => {
         const targetIndex = (index + 1) % agents.length;
-        return scheduleAgent(agent, agents[targetIndex].address, index + 1, DEFAULT_INTERVAL_MS);
+        return scheduleAgent(agent, agents[targetIndex].address, agent.id, DEFAULT_INTERVAL_MS);
     });
 
     // Keep the process alive; return handles so callers could stop agents if needed

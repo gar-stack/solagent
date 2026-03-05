@@ -9,7 +9,7 @@ import { agentBus } from "../utils/eventBus";
 export async function executeAction(
     keypair: Keypair,
     action: AgentAction,
-    agentId: number
+    agentId: string
 ): Promise<void> {
     const capability = CAPABILITIES[action.type];
     if (!capability) {

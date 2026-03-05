@@ -19,9 +19,9 @@ const MEMORY_FILE = "memory.json";
 
 // Load memory on startup
 const rawData = loadJSON<Record<string, AgentMemory>>(MEMORY_FILE, {});
-const store = new Map<number, AgentMemory>();
+const store = new Map<string, AgentMemory>();
 for (const [key, mem] of Object.entries(rawData)) {
-    store.set(parseInt(key, 10), mem);
+    store.set(key, mem);
 }
 
 function createDefaultMemory(): AgentMemory {
@@ -36,12 +36,12 @@ function createDefaultMemory(): AgentMemory {
 function persistMemory() {
     const dataToSave: Record<string, AgentMemory> = {};
     for (const [id, mem] of store.entries()) {
-        dataToSave[id.toString()] = mem;
+        dataToSave[id] = mem;
     }
     saveJSON(MEMORY_FILE, dataToSave);
 }
 
-export function getMemory(agentId: number): AgentMemory {
+export function getMemory(agentId: string): AgentMemory {
     if (!store.has(agentId)) {
         store.set(agentId, createDefaultMemory());
         persistMemory();
@@ -49,8 +49,9 @@ export function getMemory(agentId: number): AgentMemory {
     return store.get(agentId)!;
 }
 
-export function updateMemory(agentId: number, patch: Partial<AgentMemory>): void {
+export function updateMemory(agentId: string, patch: Partial<AgentMemory>): void {
     const current = getMemory(agentId);
     Object.assign(current, patch);
     persistMemory();
 }
+

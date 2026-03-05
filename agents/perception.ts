@@ -11,7 +11,7 @@ export interface Perception {
 }
 
 // Gathers a snapshot of the agent's world for the decision engine.
-export async function perceive(publicKey: PublicKey, agentId: number): Promise<Perception> {
+export async function perceive(publicKey: PublicKey, agentId: string): Promise<Perception> {
     const balance = await connection.getBalance(publicKey);
 
     // Check for any SPL token accounts (awareness)
