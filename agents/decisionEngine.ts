@@ -85,6 +85,7 @@ export async function decide(perception: Perception, targetAddress: string): Pro
     const initialPrompt = `
 You are an autonomous AI Agent managing a Solana wallet.
 Current Balance: ${(balance / 1e9).toFixed(5)} SOL
+Token Accounts: ${perception.tokenAccountCount}
 Cycle Count: ${memory.cycleCount}
 Target Agent Address: ${targetAddress}
 
@@ -96,6 +97,8 @@ Available Actions:
 - "transfer": Send 0.01 SOL to target.
 - "check_balance": Query blockchain.
 - "hold": Do nothing.
+
+Please note: You can see that you have ${perception.tokenAccountCount} token accounts in your wallet.
 
 Output ONLY valid raw JSON:
 {"type": "action_name", "params": {"to": "address", "amount": 10000000}}
