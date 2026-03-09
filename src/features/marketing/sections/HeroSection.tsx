@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,17 +14,11 @@ import {
 
 export function Hero() {
   const [isAnimated, setIsAnimated] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     setIsAnimated(true);
   }, []);
-
-  const scrollToSection = (id: string) => {
-    const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-slate-950 via-cyan-950 to-emerald-950">
@@ -85,20 +80,20 @@ export function Hero() {
             <Button 
               size="lg" 
               className="bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white px-8"
-              onClick={() => scrollToSection('dashboard')}
+              onClick={() => navigate('/dashboard')}
             >
               <Wallet className="w-5 h-5 mr-2" />
-              Launch Dashboard
+              Open Dashboard
               <ChevronRight className="w-5 h-5 ml-2" />
             </Button>
             <Button 
               size="lg" 
               variant="outline" 
               className="border-slate-600 text-slate-300 hover:bg-slate-800"
-              onClick={() => scrollToSection('features')}
+              onClick={() => navigate('/docs')}
             >
               <Bot className="w-5 h-5 mr-2" />
-              Explore Agents
+              Explore Docs
             </Button>
           </div>
 

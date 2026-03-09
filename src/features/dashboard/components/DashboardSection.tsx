@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import nacl from 'tweetnacl';
-import bs58 from 'bs58';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,10 +20,15 @@ import {
   XCircle,
   Loader2,
   Wifi,
-  Link2,
-  RefreshCw,
-  LogOut,
 } from 'lucide-react';
+import { useMasterWallet } from '@/contexts/MasterWalletContext';
+import {
+  DEVNET_RPC_URL,
+  LAMPORTS_PER_SOL,
+  rpcCall,
+  type RpcBalanceResult,
+  type RpcSignatureInfo,
+} from '@/lib/solanaRpc';
 
 interface AgentStatus {
   id: string;
@@ -56,51 +59,7 @@ interface DevnetStats {
   averageBalance: number;
 }
 
-interface RpcResponse<T> {
-  result: T;
-  error?: {
-    message: string;
-  };
-}
-
-interface RpcSignatureInfo {
-  signature: string;
-  err: unknown;
-  blockTime: number | null;
-}
-
-interface RpcBalanceResult {
-  value: number;
-}
-
-interface SolanaProvider {
-  isPhantom?: boolean;
-  isConnected?: boolean;
-  publicKey?: { toString(): string };
-  connect: (options?: { onlyIfTrusted?: boolean }) => Promise<{ publicKey: { toString(): string } }>;
-  disconnect: () => Promise<void>;
-  on?: (event: 'accountChanged', handler: (publicKey: { toString(): string } | null) => void) => void;
-  off?: (event: 'accountChanged', handler: (publicKey: { toString(): string } | null) => void) => void;
-}
-
-declare global {
-  interface Window {
-    solana?: SolanaProvider;
-  }
-}
-
-interface CliAuthPayload {
-  ver: number;
-  kind: 'cli-auth';
-  wallet: string;
-  network: string;
-  iat: number;
-  exp: number;
-}
-
-const DEVNET_RPC_URL = import.meta.env.VITE_SOLANA_RPC_URL || 'https://api.devnet.solana.com';
 const DEVNET_FALLBACK_ADDRESS = '11111111111111111111111111111111';
-const LAMPORTS_PER_SOL = 1_000_000_000;
 
 const AGENT_BASE: AgentStatus[] = [
   {
@@ -141,126 +100,12 @@ const AGENT_BASE: AgentStatus[] = [
   },
 ];
 
-async function rpcCall<T>(method: string, params: unknown[] = []): Promise<T> {
-  const response = await fetch(DEVNET_RPC_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      jsonrpc: '2.0',
-      id: 1,
-      method,
-      params,
-    }),
-  });
-
-  const json = (await response.json()) as RpcResponse<T>;
-  if (json.error) {
-    throw new Error(json.error.message);
-  }
-  return json.result;
-}
-
-function fromBase64Url(input: string): string {
-  const base64 = input.replace(/-/g, '+').replace(/_/g, '/');
-  const pad = base64.length % 4;
-  const normalized = base64 + (pad ? '='.repeat(4 - pad) : '');
-  return atob(normalized);
-}
-
 export function Dashboard() {
   const [agents, setAgents] = useState<AgentStatus[]>(AGENT_BASE);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [devnetStats, setDevnetStats] = useState<DevnetStats | null>(null);
-  const [connectedWallet, setConnectedWallet] = useState<string | null>(null);
-  const [connectedWalletBalance, setConnectedWalletBalance] = useState<number | null>(null);
-  const [isWalletConnecting, setIsWalletConnecting] = useState<boolean>(false);
-  const [cliAccessCode, setCliAccessCode] = useState<string>('');
-  const [cliAuthWallet, setCliAuthWallet] = useState<string | null>(null);
-  const [cliAuthExpiry, setCliAuthExpiry] = useState<number | null>(null);
-
-  const refreshConnectedWalletBalance = async (address: string) => {
-    const balance = await rpcCall<RpcBalanceResult>('getBalance', [address, { commitment: 'confirmed' }]);
-    setConnectedWalletBalance(balance.value / LAMPORTS_PER_SOL);
-  };
-
-  const connectWallet = async () => {
-    if (!window.solana?.isPhantom) {
-      toast.error('Phantom wallet not detected');
-      return;
-    }
-
-    setIsWalletConnecting(true);
-    try {
-      const result = await window.solana.connect();
-      const address = result.publicKey.toString();
-      setConnectedWallet(address);
-      await refreshConnectedWalletBalance(address);
-      toast.success('Wallet connected');
-    } catch (error) {
-      toast.error(`Wallet connection failed: ${error instanceof Error ? error.message : 'unknown error'}`);
-    } finally {
-      setIsWalletConnecting(false);
-    }
-  };
-
-  const disconnectWallet = async () => {
-    try {
-      await window.solana?.disconnect();
-      setConnectedWallet(null);
-      setConnectedWalletBalance(null);
-      toast.info('Wallet disconnected');
-    } catch (error) {
-      toast.error(`Disconnect failed: ${error instanceof Error ? error.message : 'unknown error'}`);
-    }
-  };
-
-  const authorizeCliCode = () => {
-    try {
-      const [payloadB64, signatureB58] = cliAccessCode.trim().split('.');
-      if (!payloadB64 || !signatureB58) {
-        throw new Error('Invalid code format');
-      }
-
-      const payloadJson = fromBase64Url(payloadB64);
-      const payload = JSON.parse(payloadJson) as CliAuthPayload;
-
-      if (payload.kind !== 'cli-auth' || payload.ver !== 1) {
-        throw new Error('Unsupported code type');
-      }
-
-      const now = Math.floor(Date.now() / 1000);
-      if (payload.exp <= now) {
-        throw new Error('Code expired');
-      }
-
-      if (payload.network !== 'devnet') {
-        throw new Error(`Code network mismatch: expected devnet, got ${payload.network}`);
-      }
-
-      const isValid = nacl.sign.detached.verify(
-        new TextEncoder().encode(payloadB64),
-        bs58.decode(signatureB58),
-        bs58.decode(payload.wallet)
-      );
-
-      if (!isValid) {
-        throw new Error('Signature verification failed');
-      }
-
-      setCliAuthWallet(payload.wallet);
-      setCliAuthExpiry(payload.exp);
-      toast.success('CLI access authorized');
-    } catch (error) {
-      toast.error(`CLI auth failed: ${error instanceof Error ? error.message : 'invalid code'}`);
-    }
-  };
-
-  const clearCliAuthorization = () => {
-    setCliAuthWallet(null);
-    setCliAuthExpiry(null);
-    setCliAccessCode('');
-  };
+  const { address, balance } = useMasterWallet();
 
   useEffect(() => {
     let isMounted = true;
@@ -361,46 +206,12 @@ export function Dashboard() {
     };
   }, []);
 
-  useEffect(() => {
-    const provider = window.solana;
-    if (!provider) return;
-
-    const handleAccountChanged = (publicKey: { toString(): string } | null) => {
-      if (!publicKey) {
-        setConnectedWallet(null);
-        setConnectedWalletBalance(null);
-        return;
-      }
-
-      const address = publicKey.toString();
-      setConnectedWallet(address);
-      void refreshConnectedWalletBalance(address);
-    };
-
-    provider.on?.('accountChanged', handleAccountChanged);
-
-    if (provider.isConnected && provider.publicKey) {
-      const address = provider.publicKey.toString();
-      setConnectedWallet(address);
-      void refreshConnectedWalletBalance(address);
-    }
-
-    return () => {
-      provider.off?.('accountChanged', handleAccountChanged);
-    };
-  }, []);
-
-  const copyAddress = async (address: string) => {
-    await navigator.clipboard.writeText(address);
+  const copyAddress = async (value: string) => {
+    await navigator.clipboard.writeText(value);
     toast.success('Address copied');
   };
 
   const toggleAgent = (agentId: string) => {
-    if (!connectedWallet && !cliAuthWallet) {
-      toast.error('Connect master wallet or authorize CLI access first');
-      return;
-    }
-
     const targetAgent = agents.find((agent) => agent.id === agentId);
     if (!targetAgent) return;
 
@@ -426,11 +237,6 @@ export function Dashboard() {
   const totalBalance = agents.reduce((sum, a) => sum + a.balance, 0);
   const totalProfit = agents.reduce((sum, a) => sum + a.profit, 0);
   const runningAgents = agents.filter((a) => a.status === 'running').length;
-  const accessGranted = Boolean(connectedWallet || cliAuthWallet);
-  const cliAuthExpiresIn =
-    cliAuthExpiry && cliAuthExpiry > Math.floor(Date.now() / 1000)
-      ? `${Math.floor((cliAuthExpiry - Math.floor(Date.now() / 1000)) / 60)}m`
-      : null;
 
   return (
     <section id="dashboard" className="py-16 sm:py-20 bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900">
@@ -438,84 +244,23 @@ export function Dashboard() {
         <div className="mb-10 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Agent Dashboard</h2>
-            <p className="text-slate-400">Live devnet balances and network activity (auto-refresh every 60s)</p>
+            <p className="text-slate-400">Protected web dashboard with live devnet balances and network activity</p>
           </div>
           <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-300">
             <Wifi className="h-3.5 w-3.5" />
-            Connected to Solana Devnet
+            Master Wallet Active
           </div>
         </div>
 
         <Card className="mb-8 border-slate-800 bg-gradient-to-r from-slate-900/90 to-slate-800/80 backdrop-blur">
           <CardContent className="pt-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-4">
-                <p className="text-sm text-slate-400">Master Wallet Mode (Dashboard)</p>
-                <p className="text-lg font-semibold text-white">
-                  {connectedWallet ? `${connectedWallet.slice(0, 8)}...${connectedWallet.slice(-6)}` : 'Not connected'}
-                </p>
-                <p className="text-sm text-slate-400">
-                  {connectedWalletBalance !== null ? `${connectedWalletBalance.toFixed(4)} SOL` : 'Connect Phantom to control agents from UI'}
-                </p>
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  {connectedWallet ? (
-                    <>
-                      <Button
-                        variant="secondary"
-                        className="bg-slate-700 text-slate-100 hover:bg-slate-600"
-                        onClick={() => void refreshConnectedWalletBalance(connectedWallet)}
-                      >
-                        <RefreshCw className="mr-2 h-4 w-4" />
-                        Refresh
-                      </Button>
-                      <Button variant="destructive" onClick={() => void disconnectWallet()}>
-                        <LogOut className="mr-2 h-4 w-4" />
-                        Disconnect
-                      </Button>
-                    </>
-                  ) : (
-                    <Button className="bg-cyan-600 text-white hover:bg-cyan-500" onClick={() => void connectWallet()} disabled={isWalletConnecting}>
-                      {isWalletConnecting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Link2 className="mr-2 h-4 w-4" />}
-                      Connect Phantom
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-4">
-                <p className="text-sm text-slate-400">CLI Mode (for CLI-managed users)</p>
-                <p className="text-sm text-slate-300 mb-2">Generate code with `solagent auth:code --ttl 900` and paste below.</p>
-                <div className="flex flex-col gap-2">
-                  <input
-                    value={cliAccessCode}
-                    onChange={(e) => setCliAccessCode(e.target.value)}
-                    placeholder="Paste CLI access code"
-                    className="h-10 rounded-md border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                  />
-                  <div className="flex flex-wrap gap-2">
-                    <Button onClick={authorizeCliCode} className="bg-emerald-600 hover:bg-emerald-500 text-white">
-                      Authorize CLI
-                    </Button>
-                    <Button variant="secondary" className="bg-slate-700 text-slate-100 hover:bg-slate-600" onClick={clearCliAuthorization}>
-                      Clear
-                    </Button>
-                  </div>
-                  <p className="text-xs text-slate-400">
-                    {cliAuthWallet ? `Authorized wallet: ${cliAuthWallet.slice(0, 8)}...${cliAuthWallet.slice(-6)}${cliAuthExpiresIn ? ` (expires in ${cliAuthExpiresIn})` : ''}` : 'No active CLI authorization'}
-                  </p>
-                </div>
-              </div>
+            <div className="flex flex-col gap-1">
+              <p className="text-sm text-slate-400">Authenticated Master Wallet</p>
+              <p className="text-lg font-semibold text-white">{address ? `${address.slice(0, 8)}...${address.slice(-6)}` : 'Unknown'}</p>
+              <p className="text-sm text-slate-400">{balance !== null ? `${balance.toFixed(4)} SOL` : 'Balance unavailable'}</p>
             </div>
           </CardContent>
         </Card>
-
-        {!accessGranted && (
-          <Card className="mb-8 border-amber-700/40 bg-amber-500/10">
-            <CardContent className="pt-6 text-amber-200">
-              Agent controls are locked. Connect a master wallet or authorize CLI mode to access agent actions.
-            </CardContent>
-          </Card>
-        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6 mb-8">
           <Card className="bg-slate-900/90 border-slate-800">
@@ -554,9 +299,7 @@ export function Dashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-slate-400 text-sm">Active Agents</p>
-                  <p className="text-2xl font-bold text-white">
-                    {runningAgents} / {agents.length}
-                  </p>
+                  <p className="text-2xl font-bold text-white">{runningAgents} / {agents.length}</p>
                 </div>
                 <div className="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center">
                   <Bot className="w-6 h-6 text-blue-400" />
@@ -624,9 +367,7 @@ export function Dashboard() {
                       <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
                         <span className="text-slate-400 text-sm">Wallet Address</span>
                         <div className="flex items-center gap-2">
-                          <code className="text-cyan-400 text-sm">
-                            {agent.walletAddress.slice(0, 8)}...{agent.walletAddress.slice(-4)}
-                          </code>
+                          <code className="text-cyan-400 text-sm">{agent.walletAddress.slice(0, 8)}...{agent.walletAddress.slice(-4)}</code>
                           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => void copyAddress(agent.walletAddress)}>
                             <Copy className="w-4 h-4 text-slate-400" />
                           </Button>
@@ -650,9 +391,7 @@ export function Dashboard() {
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
                           <span className="text-slate-400">Success Rate</span>
-                          <span className="text-white">
-                            {agent.totalDecisions > 0 ? Math.round((agent.executedDecisions / agent.totalDecisions) * 100) : 0}%
-                          </span>
+                          <span className="text-white">{agent.totalDecisions > 0 ? Math.round((agent.executedDecisions / agent.totalDecisions) * 100) : 0}%</span>
                         </div>
                         <Progress value={agent.totalDecisions > 0 ? (agent.executedDecisions / agent.totalDecisions) * 100 : 0} className="h-2 bg-slate-800" />
                       </div>
@@ -662,7 +401,7 @@ export function Dashboard() {
                           <Clock className="w-4 h-4" />
                           Last action: {agent.lastAction}
                         </div>
-                        <Button size="sm" disabled={!accessGranted} variant={agent.status === 'running' ? 'destructive' : 'default'} onClick={() => toggleAgent(agent.id)}>
+                        <Button size="sm" variant={agent.status === 'running' ? 'destructive' : 'default'} onClick={() => toggleAgent(agent.id)}>
                           {agent.status === 'running' ? (
                             <>
                               <Pause className="w-4 h-4 mr-1" /> Stop

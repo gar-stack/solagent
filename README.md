@@ -22,10 +22,11 @@ https://superteam.fun/earn/listing/defi-developer-challenge-agentic-wallets-for-
 - Devnet/testnet airdrop support
 - Agent framework with risk checks (confidence threshold, allowed actions, cooldown, token lists)
 - Trading bot and LP bot prototypes (decision logic currently mock/simulated)
-- React dashboard prototype UI (currently static sample data)
+- Route-based web app (`/`, `/dashboard`, `/docs`) with protected dashboard access
 
 ## Important Status Notes
 
+- Web dashboard route requires connected master wallet (Phantom) before access.
 - The dashboard now reads live devnet balances, recent signatures, and network stats via RPC.
 - Trading and liquidity strategies currently use simulated market data.
 - `executeDecision` currently executes `transfer` and `hold`; other action types are placeholders.
@@ -85,11 +86,16 @@ console.log('Balance:', balance, 'SOL');
 ```text
 solagent/
 ├── src/
-│   ├── sdk/                 # Core wallet + agent abstractions
-│   ├── agents/              # Trading and liquidity bot implementations
-│   ├── cli/                 # CLI source prototype
-│   ├── sections/            # Dashboard sections
-│   └── components/ui/       # UI component library
+│   ├── sdk/                       # Core wallet + agent abstractions
+│   ├── agents/                    # Trading and liquidity bot implementations
+│   ├── cli/                       # CLI source
+│   ├── features/dashboard/        # Dashboard UI domain
+│   ├── features/marketing/        # Landing/docs/footer sections
+│   ├── features/navigation/       # Top navigation
+│   ├── contexts/                  # Shared master-wallet state
+│   ├── pages/                     # Route-level pages
+│   ├── lib/                       # RPC and shared utilities
+│   └── components/ui/             # UI component library
 ├── docs/
 ├── README.md
 ├── SKILLS.md

@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
 import { 
   Github, 
   Twitter, 
@@ -52,36 +53,24 @@ export function Footer() {
             <h4 className="text-white font-semibold mb-4">Resources</h4>
             <ul className="space-y-2">
               <li>
-                <a 
-                  href="#documentation" 
-                  className="text-slate-400 hover:text-white transition-colors"
-                >
+                <Link to="/docs" className="text-slate-400 hover:text-white transition-colors">
                   Documentation
-                </a>
+                </Link>
               </li>
               <li>
-                <a 
-                  href="#docs-portal" 
-                  className="text-slate-400 hover:text-white transition-colors"
-                >
+                <Link to="/docs" className="text-slate-400 hover:text-white transition-colors">
                   Docs Portal
-                </a>
+                </Link>
               </li>
               <li>
-                <a 
-                  href="#features" 
-                  className="text-slate-400 hover:text-white transition-colors"
-                >
+                <Link to="/" className="text-slate-400 hover:text-white transition-colors">
                   Features
-                </a>
+                </Link>
               </li>
               <li>
-                <a 
-                  href="#dashboard" 
-                  className="text-slate-400 hover:text-white transition-colors"
-                >
+                <Link to="/dashboard" className="text-slate-400 hover:text-white transition-colors">
                   Dashboard
-                </a>
+                </Link>
               </li>
               <li>
                 <a 
