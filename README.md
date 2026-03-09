@@ -1,101 +1,288 @@
-<div align="center">
-  <img src="https://github.com/user-attachments/assets/placeholder-solagent-logo.png" width="120" height="120" alt="SolAgent Logo" />
-  <h1>SolAgent</h1>
-  <p><b>Autonomous Wallet Infrastructure for AI Agents on Solana</b></p>
-  
-  [![Solana](https://img.shields.io/badge/Solana-Devnet-14F195?style=for-the-badge&logo=solana&logoColor=black)](https://solana.com)
-  [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
-  [![Framework](https://img.shields.io/badge/LangGraph-Agentic-blue?style=for-the-badge&labelColor=6b4fbb)](https://langchain-ai.github.io/langgraphjs/)
-</div>
+# SolAgent 🤖💰
 
----
+> **Agentic Wallets for AI Agents on Solana**
 
-## 🚀 Overview
+[![Solana](https://img.shields.io/badge/Solana-Devnet-purple)](https://solana.com)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://typescriptlang.org)
+[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-**SolAgent** is the first lightweight infrastructure designed specifically for **autonomous AI agents** on the Solana blockchain. It provides a robust abstraction layer between your agentic brain (LLM) and the raw blockchain, allowing agents to:
+SolAgent is a comprehensive toolkit for building autonomous AI agents that can create wallets, sign transactions, and execute DeFi strategies on the Solana blockchain without human intervention.
 
-- 🛡️ **Own and Control Wallets**: Programmatically create and manage unique identities.
-- 🧠 **Self-Correcting Decisions**: Uses **LangGraph** to ensure agents follow rules and fix their own errors.
-- 💸 **Autonomous Finance**: Sign transactions, manage SOL balances, and simulate DeFi interactions without human approval.
-- 📊 **Real-time Observability**: A premium dashboard monitors "agent thoughts" and transactions as they happen.
+## 🎯 Challenge Submission
 
----
+This project is submitted for the **DeFi Developer Challenge – Agentic Wallets for AI Agents** by **Superteam Nigeria**.
 
-## 🏗️ Core Architecture (The PDA Loop)
+### Requirements Met ✅
 
-SolAgent follows the **Perception-Decision-Action** loop, ensuring agents act like real-world independent actors:
+- ✅ **Programmatic Wallet Creation** - Wallets created automatically with secure key generation
+- ✅ **Automatic Transaction Signing** - AI agents sign transactions autonomously
+- ✅ **SOL & SPL Token Support** - Full support for native SOL and SPL tokens
+- ✅ **Test dApp Integration** - Interactive dashboard for monitoring and control
+- ✅ **Deep Dive Documentation** - Comprehensive explanation of design and security
+- ✅ **Open Source** - Full source code with MIT license
+- ✅ **Devnet Prototype** - Working implementation on Solana devnet
+- ✅ **SKILLS.md** - File for AI agents to understand the system
 
-1. **Perceive**: Agent checks its current wallet balance and previous transaction history.
-2. **Decide**: The AI brain (LLM) chooses an action (Transfer, Swap, Hold) based on its current context.
-3. **Act**: The internal **KMS (Key Management System)** signs and broadcasts the transaction safely to Devnet.
-
----
-
-## ✨ Features
-
-- **Multi-Model Support**: Use any LLM—from local **Ollama** (Llama 3) to **Hugging Face** Inferences or **Groq**.
-- **Agent Sandbox**: Run multiple agents in parallel, each with their own recurring schedules and unique strategies.
-- **Persistent Memory**: Agents remember their last actions and balances even after you restart the system.
-- **KMS Abstraction**: Keys are stored securely in an isolated layer, ready to be swapped with AWS KMS or HashiCorp Vault.
-- **Real-time Dashboard**: A beautiful React frontend using **Framer Motion** and **Glassmorphism** to visualize the agent swarm.
-
----
-
-## 🛠️ Getting Started
-
-### Prerequisites
-
-- [Node.js](https://nodejs.org/) (v18+)
-- [Ollama](https://ollama.ai/) (Optional, for 100% local free AI)
-- A Solana Devnet environment
+## 🚀 Quick Start
 
 ### Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/solagent.git
+git clone https://github.com/gar-stack/solagent.git
 cd solagent
 
 # Install dependencies
 npm install
 
-# Configure your environment
-cp .env.example .env
-# Add your GROQ_API_KEY or HUGGINGFACEHUB_API_TOKEN
-```
-
-### Run the Swarm
-
-```bash
-# Start the AI Simulation & Dashboard API
-npm start
-
-# In a separate terminal, start the Web UI
-cd frontend
+# Start the development server
 npm run dev
 ```
 
-Visit `http://localhost:5173` to watch your agents evolve!
+### Create Your First Agentic Wallet
 
+```typescript
+import { AgenticWallet, TradingBot } from './src/sdk';
+
+// Create a new wallet
+const wallet = AgenticWallet.generate({
+  network: 'devnet',
+  commitment: 'confirmed'
+});
+
+console.log('Wallet address:', wallet.getAddress());
+
+// Request airdrop (devnet only)
+await wallet.requestAirdrop(2);
+
+// Check balance
+const balance = await wallet.getSolBalance();
+console.log('Balance:', balance, 'SOL');
+```
+
+### Start an AI Trading Agent
+
+```typescript
+import { TradingBot } from './src/agents/TradingBot';
+
+// Initialize trading bot
+const bot = new TradingBot(wallet, {
+  name: 'Alpha Trader',
+  description: 'Automated trading bot with RSI strategy',
+  riskLevel: 'moderate',
+  maxTransactionAmount: 1.0,
+  cooldownPeriod: 300000,
+  allowedActions: ['transfer', 'swap', 'hold'],
+  blacklistedTokens: []
+}, {
+  buyThreshold: -2,      // Buy when price drops 2%
+  sellThreshold: 5,      // Sell when price rises 5%
+  stopLoss: 3,           // 3% stop loss
+  takeProfit: 10,        // 10% take profit
+  maxPositionSize: 0.5   // Max 0.5 SOL per position
+});
+
+// Start autonomous trading (checks every minute)
+await bot.start(60000);
+```
+
+## 📁 Project Structure
+
+```
+solagent/
+├── src/
+│   ├── sdk/                    # Core SDK
+│   │   ├── AgenticWallet.ts    # Wallet implementation
+│   │   ├── AIAgent.ts          # Base agent class
+│   │   └── index.ts            # SDK exports
+│   ├── agents/                 # AI Agent implementations
+│   │   ├── TradingBot.ts       # Trading bot agent
+│   │   └── LiquidityProvider.ts # Liquidity provider agent
+│   ├── cli/                    # Command-line interface
+│   │   └── solagent.ts         # CLI tool
+│   ├── sections/               # Dashboard components
+│   │   ├── Hero.tsx            # Landing section
+│   │   ├── Dashboard.tsx       # Agent monitoring dashboard
+│   │   ├── Features.tsx        # Feature showcase
+│   │   ├── Documentation.tsx   # Documentation section
+│   │   └── Footer.tsx          # Footer
+│   └── App.tsx                 # Main application
+├── docs/                       # Additional documentation
+├── README.md                   # This file
+├── SKILLS.md                   # AI agent instructions
+└── package.json
+```
+
+## 🛠️ Tech Stack
+
+- **Frontend**: React + TypeScript + Vite + Tailwind CSS + shadcn/ui
+- **Blockchain**: Solana Web3.js, SPL Token
+- **Cryptography**: TweetNaCl for signing, bs58 for encoding
+- **AI Agents**: Custom agent framework with extensible base class
+
+## 💻 CLI Usage
+
+SolAgent includes a powerful CLI for managing wallets and agents:
+
+```bash
+# Create a new wallet
+npx solagent wallet:create --network devnet --save
+
+# Check balance
+npx solagent wallet:balance
+
+# Request airdrop
+npx solagent wallet:airdrop --amount 2
+
+# Transfer SOL
+npx solagent wallet:transfer --to <address> --amount 1
+
+# Start trading bot
+npx solagent agent:trading --name "My Bot" --risk moderate
+
+# Start liquidity provider
+npx solagent agent:liquidity --min-apy 5
+```
+
+## 🎨 Dashboard Features
+
+The web dashboard provides:
+
+- **Real-time Monitoring** - Track agent status, balances, and performance
+- **Transaction History** - View all transactions with signatures
+- **Agent Control** - Start/stop agents with one click
+- **Analytics** - Performance metrics and statistics
+- **Multi-agent Support** - Manage multiple AI agents simultaneously
+
+## 🔐 Security Features
+
+- **Encrypted Key Storage** - Private keys never exposed in plain text
+- **Transaction Limits** - Configurable max transaction amounts
+- **Whitelist Controls** - Restrict to approved tokens and addresses
+- **Blacklist Support** - Block specific tokens from trading
+- **Cooldown Periods** - Prevent excessive trading
+- **Audit Trail** - Complete transaction history logging
+
+## 🤖 AI Agent Types
+
+### Trading Bot
+- RSI-based trading strategy
+- Moving average crossovers
+- Configurable stop-loss and take-profit
+- Position sizing management
+
+### Liquidity Provider
+- Automatic pool selection based on APY
+- Impermanent loss monitoring
+- Auto-compounding fees
+- Rebalancing strategies
+
+## 📚 Documentation
+
+- [Getting Started Guide](docs/GETTING_STARTED.md)
+- [API Reference](docs/API_REFERENCE.md)
+- [Security Best Practices](docs/SECURITY.md)
+- [Agent Development](docs/AGENTS.md)
+- [SKILLS.md](SKILLS.md) - For AI agents
+
+## 🧪 Testing
+
+```bash
+# Run tests
+npm test
+
+# Test on devnet
+npm run test:devnet
+
+# Build for production
+npm run build
+```
+
+## 🌐 Deployment
+
+The dashboard is deployed and accessible at:
+**https://solagent-demo.vercel.app**
+
+## 🎥 Deep Dive
+
+### Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      SolAgent Architecture                   │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐  │
+│  │   Dashboard  │    │     CLI      │    │   AI Agents  │  │
+│  │   (React)    │    │   (Node.js)  │    │  (Trading/   │  │
+│  │              │    │              │    │  Liquidity)  │  │
+│  └──────┬───────┘    └──────┬───────┘    └──────┬───────┘  │
+│         │                   │                   │          │
+│         └───────────────────┼───────────────────┘          │
+│                             │                              │
+│                    ┌────────┴────────┐                     │
+│                    │   AgenticWallet  │                     │
+│                    │     (SDK Core)   │                     │
+│                    └────────┬────────┘                     │
+│                             │                              │
+│                    ┌────────┴────────┐                     │
+│                    │  Solana Web3.js  │                     │
+│                    │  (Devnet/Mainnet)│                     │
+│                    └─────────────────┘                     │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Wallet Design
+
+1. **Key Generation**: Uses cryptographically secure random generation
+2. **Storage**: Encrypted at rest (in production, use hardware security modules)
+3. **Signing**: All transactions signed locally, never expose private keys
+4. **Recovery**: Private key export for backup (with security warnings)
+
+### AI Agent Integration
+
+Agents follow a decision-making loop:
+
+1. **Analyze Market** - Fetch price data, volume, indicators
+2. **Make Decision** - Apply strategy to determine action
+3. **Validate** - Check against safety constraints
+4. **Execute** - Sign and broadcast transaction
+5. **Log** - Record decision and outcome
+
+## 🏆 Key Features
+
+| Feature | Description |
+|---------|-------------|
+| **Programmatic Wallets** | Create wallets on-the-fly for each AI agent |
+| **Auto Signing** | Sign transactions without human intervention |
+| **Multi-Token Support** | SOL and all SPL tokens |
+| **Safety Controls** | Whitelists, limits, cooldowns |
+| **Extensible Agents** | Easy to build custom agent types |
+| **Real-time Dashboard** | Monitor all agents in one place |
+| **CLI Tool** | Command-line management |
+| **TypeScript** | Full type safety |
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+## 🤝 Contributing
+
+Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) for details.
+
+## 🙏 Acknowledgments
+
+- **Superteam Nigeria** for organizing the challenge
+- **Solana Foundation** for the excellent documentation
+- **Superteam Community** for support and feedback
+
+## 📞 Contact
+
+- GitHub: [@Gar Manji](https://github.com/gar-stack)
+- Phone: [@Gar Manji] (tel:09039913283)
 ---
 
-## 🛡️ Security
-
-SolAgent prioritizes security through its **KMS Layer**:
-
-- Private keys reside in `keyManager.ts` and are never exposed to the LLM or frontend.
-- Uses standard `@solana/web3.js` for non-custodial signing.
-- **Production Roadmap**: Integration with hardware security modules (HSM) and multi-sig (Squads) planned for Phase 2.
-
----
-
-## 📊 Evaluation & Tracing
-
-This project integrated **Opik** for full decision-tracing. You can monitor every prompt, thought, and JSON output of your agents in the Opik dashboard to debug agent behavior and optimize prompts.
-
----
-
-## 🏆 Bounty Submission
-
-Built for the **Superteam Nigeria: Agentic Wallets for AI Agents** challenge.
-Designed to show that AI on Solana is no longer just a script—it's a living ecosystem of autonomous finance.
+<p align="center">
+  Built with ❤️ for the Solana ecosystem
+</p>
