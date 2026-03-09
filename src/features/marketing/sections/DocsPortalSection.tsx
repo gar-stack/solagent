@@ -13,7 +13,7 @@ const sections = [
   {
     id: 'doc-access',
     title: '2. Access Model',
-    body: 'Dashboard agent controls require either a connected master wallet (Phantom) or a short-lived signed CLI access code from `solagent auth:code`. This prevents anonymous UI control.',
+    body: 'Dashboard agent controls require a connected master wallet (Phantom). CLI/SDK users operate directly via terminal/code paths without web dashboard control.',
   },
   {
     id: 'doc-agents',

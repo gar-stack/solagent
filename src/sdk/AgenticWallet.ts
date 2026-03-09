@@ -67,6 +67,9 @@ export class AgenticWallet {
     details: any;
   }> = [];
 
+  private readonly retryAttempts = 3;
+  private readonly retryBaseDelayMs = 400;
+
   constructor(config: WalletConfig, privateKey?: string) {
     this.config = {
       commitment: 'confirmed',
@@ -198,9 +201,7 @@ export class AgenticWallet {
       })
     );
 
-    const signature = await this.connection.sendTransaction(transaction, [this.keypair], options);
-    
-    await this.confirmTransaction(signature);
+    const signature = await this.simulateAndSendLegacyTransaction(transaction, options);
     
     this.transactionHistory.push({
       signature,
@@ -261,8 +262,7 @@ export class AgenticWallet {
       )
     );
 
-    const signature = await this.connection.sendTransaction(transaction, [this.keypair]);
-    await this.confirmTransaction(signature);
+    const signature = await this.simulateAndSendLegacyTransaction(transaction);
 
     this.transactionHistory.push({
       signature,
@@ -282,23 +282,63 @@ export class AgenticWallet {
     }
 
     const lamports = amount * LAMPORTS_PER_SOL;
-    const signature = await this.connection.requestAirdrop(this.keypair.publicKey, lamports);
-    await this.confirmTransaction(signature);
+    const signature = await this.withRetry(async () => {
+      const sig = await this.connection.requestAirdrop(this.keypair.publicKey, lamports);
+      await this.confirmTransaction(sig);
+      return sig;
+    });
 
     return signature;
   }
 
   // Confirm transaction
-  private async confirmTransaction(signature: string): Promise<void> {
-    const latestBlockhash = await this.connection.getLatestBlockhash();
+  private async confirmTransaction(
+    signature: string,
+    latestBlockhash?: { blockhash: string; lastValidBlockHeight: number }
+  ): Promise<void> {
+    const blockhashCtx = latestBlockhash ?? (await this.connection.getLatestBlockhash());
     await this.connection.confirmTransaction(
       {
         signature,
-        blockhash: latestBlockhash.blockhash,
-        lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+        blockhash: blockhashCtx.blockhash,
+        lastValidBlockHeight: blockhashCtx.lastValidBlockHeight,
       },
       this.config.commitment
     );
+  }
+
+  private async simulateAndSendLegacyTransaction(transaction: Transaction, options?: SendOptions): Promise<TransactionSignature> {
+    return this.withRetry(async () => {
+      const latestBlockhash = await this.connection.getLatestBlockhash(this.config.commitment);
+      transaction.feePayer = this.keypair.publicKey;
+      transaction.recentBlockhash = latestBlockhash.blockhash;
+      transaction.sign(this.keypair);
+
+      const simulation = await this.connection.simulateTransaction(transaction, [this.keypair], true);
+      if (simulation.value.err) {
+        throw new Error(`Transaction simulation failed: ${JSON.stringify(simulation.value.err)}`);
+      }
+
+      const signature = await this.connection.sendTransaction(transaction, [this.keypair], options);
+      await this.confirmTransaction(signature, latestBlockhash);
+      return signature;
+    });
+  }
+
+  private async withRetry<T>(operation: () => Promise<T>, attempts: number = this.retryAttempts): Promise<T> {
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error;
+        if (attempt >= attempts) break;
+        const delay = this.retryBaseDelayMs * attempt;
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+
+    throw lastError instanceof Error ? lastError : new Error('Operation failed after retries');
   }
 
   // Get transaction history

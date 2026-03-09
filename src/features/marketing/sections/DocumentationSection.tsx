@@ -80,10 +80,7 @@ await wallet.requestAirdrop(2);
 
 # Check balance
 const balance = await wallet.getSolBalance();
-console.log('Balance:', balance, 'SOL');
-
-# Optional: authorize dashboard from CLI
-solagent auth:code --ttl 900`;
+console.log('Balance:', balance, 'SOL');`;
 
 export function Documentation() {
   return (
@@ -99,6 +96,9 @@ export function Documentation() {
           <p className="text-slate-400 max-w-2xl mx-auto">
             Comprehensive documentation to help you get started and build 
             powerful AI agents on Solana.
+          </p>
+          <p className="text-slate-500 text-sm max-w-2xl mx-auto mt-3">
+            Web dashboard access uses connected master wallet. CLI/SDK users authenticate and operate directly in terminal/code.
           </p>
         </div>
 
@@ -234,7 +234,7 @@ export function Documentation() {
               <CardContent className="text-sm text-slate-300 space-y-2">
                 <p>1. Create/fund wallet on devnet.</p>
                 <p>2. Configure policy limits and allowed actions.</p>
-                <p>3. Authorize dashboard with master wallet or CLI access code.</p>
+                <p>3. Authorize dashboard with connected master wallet.</p>
                 <p>4. Monitor health, logs, and balances before any promotion.</p>
               </CardContent>
             </Card>

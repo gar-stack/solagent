@@ -27,6 +27,9 @@ https://superteam.fun/earn/listing/defi-developer-challenge-agentic-wallets-for-
 ## Important Status Notes
 
 - Web dashboard route requires connected master wallet (Phantom) before access.
+- Dashboard navigation is blocked with visible toast feedback when wallet is not connected.
+- Web dashboard no longer accepts CLI auth token/code input.
+- CLI/SDK workflows remain available for users who prefer non-web operation.
 - The dashboard now reads live devnet balances, recent signatures, and network stats via RPC.
 - Trading and liquidity strategies currently use simulated market data.
 - `executeDecision` currently executes `transfer` and `hold`; other action types are placeholders.

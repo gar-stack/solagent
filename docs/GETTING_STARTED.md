@@ -20,6 +20,10 @@ npm install
 npm run dev
 ```
 
+Web note:
+- Dashboard access requires connecting a master wallet in-browser.
+- CLI/SDK users can run agent workflows without web login.
+
 ## Validate Project
 
 ```bash

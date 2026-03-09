@@ -1,14 +1,23 @@
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useMasterWallet } from '@/contexts/MasterWalletContext';
 import { Github, LogOut, RefreshCw, Wallet } from 'lucide-react';
+import { toast } from 'sonner';
 
 function navClass({ isActive }: { isActive: boolean }) {
   return `text-sm transition-colors ${isActive ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`;
 }
 
 export function TopNav() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { address, balance, connect, disconnect, refresh, isConnecting } = useMasterWallet();
+
+  const guardDashboardNavigation = (event: { preventDefault: () => void }) => {
+    if (address) return;
+    event.preventDefault();
+    toast.error('Connect your master wallet to open Dashboard');
+  };
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-800/80 bg-slate-950/90 backdrop-blur">
@@ -16,8 +25,17 @@ export function TopNav() {
         <Link to="/" className="font-semibold text-white tracking-tight">SolAgent</Link>
 
         <nav className="hidden md:flex items-center gap-6">
-          <NavLink to="/" end className={navClass}>Landing</NavLink>
-          <NavLink to="/dashboard" className={navClass}>Dashboard</NavLink>
+          <NavLink to="/" end className={navClass}>Home</NavLink>
+          <a
+            href="/dashboard"
+            className={`text-sm transition-colors ${location.pathname === '/dashboard' ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
+            onClick={(e) => {
+              guardDashboardNavigation(e);
+              if (address) navigate('/dashboard');
+            }}
+          >
+            Dashboard
+          </a>
           <NavLink to="/docs" className={navClass}>Documentation</NavLink>
         </nav>
 
@@ -51,8 +69,17 @@ export function TopNav() {
       </div>
       <div className="md:hidden border-t border-slate-800/60">
         <div className="container mx-auto px-4 py-2 flex items-center gap-4 overflow-x-auto">
-          <NavLink to="/" end className={navClass}>Landing</NavLink>
-          <NavLink to="/dashboard" className={navClass}>Dashboard</NavLink>
+          <NavLink to="/" end className={navClass}>Home</NavLink>
+          <a
+            href="/dashboard"
+            className={`text-sm transition-colors ${location.pathname === '/dashboard' ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
+            onClick={(e) => {
+              guardDashboardNavigation(e);
+              if (address) navigate('/dashboard');
+            }}
+          >
+            Dashboard
+          </a>
           <NavLink to="/docs" className={navClass}>Documentation</NavLink>
         </div>
       </div>
