@@ -1,5 +1,6 @@
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { useMasterWallet } from '@/contexts/MasterWalletContext';
 import { Github, LogOut, RefreshCw, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
@@ -11,7 +12,7 @@ function navClass({ isActive }: { isActive: boolean }) {
 export function TopNav() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { address, balance, connect, disconnect, refresh, isConnecting } = useMasterWallet();
+  const { address, balance, role, connect, disconnect, refresh, isConnecting } = useMasterWallet();
 
   const guardDashboardNavigation = (event: { preventDefault: () => void }) => {
     if (address) return;
@@ -45,6 +46,17 @@ export function TopNav() {
               <div className="hidden sm:block text-right mr-2">
                 <p className="text-xs text-slate-300">{address.slice(0, 6)}...{address.slice(-4)}</p>
                 <p className="text-[11px] text-slate-500">{balance !== null ? `${balance.toFixed(4)} SOL` : 'Balance --'}</p>
+                <Badge
+                  className={
+                    role === 'admin'
+                      ? 'mt-1 bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                      : role === 'operator'
+                        ? 'mt-1 bg-cyan-500/20 text-cyan-300 border-cyan-500/30'
+                        : 'mt-1 bg-slate-700 text-slate-200 border-slate-600'
+                  }
+                >
+                  {role}
+                </Badge>
               </div>
               <Button size="sm" variant="secondary" className="bg-slate-800 text-slate-200 hover:bg-slate-700" onClick={() => void refresh()}>
                 <RefreshCw className="w-4 h-4" />

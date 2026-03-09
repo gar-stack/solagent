@@ -40,6 +40,7 @@ https://superteam.fun/earn/listing/defi-developer-challenge-agentic-wallets-for-
 - CLI default wallet storage supports encrypted-at-rest config via `SOLAGENT_MASTER_PASSWORD`.
 - CLI exposes `policy:*`, `audit:*`, and `control:*` commands for control-plane operations.
 - CI pipeline now enforces lint, unit tests, and artifact builds on push/PR.
+- Web dashboard includes wallet-based RBAC (`viewer` / `operator` / `admin`) using allowlist env vars.
 - Initial unit tests are available for policy and CLI auth verification.
 
 ## Quick Start
@@ -49,6 +50,13 @@ git clone https://github.com/gar-stack/solagent.git
 cd solagent
 npm install
 npm run dev
+```
+
+Optional web RBAC config:
+
+```bash
+VITE_OPERATOR_WALLETS=walletA,walletB
+VITE_ADMIN_WALLETS=walletC
 ```
 
 ## Build and Validation

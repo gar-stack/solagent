@@ -20,8 +20,16 @@ npm install
 npm run dev
 ```
 
+Optional `.env` role mapping for dashboard RBAC:
+
+```bash
+VITE_OPERATOR_WALLETS=<comma-separated-wallets>
+VITE_ADMIN_WALLETS=<comma-separated-wallets>
+```
+
 Web note:
 - Dashboard access requires connecting a master wallet in-browser.
+- Connected wallets not in allowlists default to `viewer` role (read-only controls).
 - CLI/SDK users can run agent workflows without web login.
 
 ## Validate Project

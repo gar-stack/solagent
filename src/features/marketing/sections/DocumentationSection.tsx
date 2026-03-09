@@ -1,7 +1,9 @@
+import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
 import { 
   BookOpen, 
   Code2, 
@@ -14,7 +16,8 @@ import {
   Cpu,
   ListChecks,
   Layers3,
-  Rocket
+  Rocket,
+  Search
 } from 'lucide-react';
 
 const docs = [
@@ -83,6 +86,15 @@ const balance = await wallet.getSolBalance();
 console.log('Balance:', balance, 'SOL');`;
 
 export function Documentation() {
+  const [query, setQuery] = useState('');
+  const filteredDocs = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return docs;
+    return docs.filter((doc) =>
+      `${doc.title} ${doc.description}`.toLowerCase().includes(needle)
+    );
+  }, [query]);
+
   return (
     <section id="documentation" className="py-20 bg-slate-900">
       <div className="container mx-auto px-4 sm:px-6">
@@ -103,8 +115,19 @@ export function Documentation() {
         </div>
 
         {/* Doc Cards */}
+        <div className="mb-6 max-w-xl mx-auto">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+            <Input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search docs by topic (security, API, agents...)"
+              className="pl-9 bg-slate-950 border-slate-700 text-slate-200 placeholder:text-slate-500"
+            />
+          </div>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-16">
-          {docs.map((doc, index) => (
+          {filteredDocs.map((doc, index) => (
             <Card 
               key={index} 
               className="bg-slate-950 border-slate-800 hover:border-cyan-600/50 transition-colors cursor-pointer group"
@@ -126,6 +149,9 @@ export function Documentation() {
             </Card>
           ))}
         </div>
+        {filteredDocs.length === 0 && (
+          <p className="text-center text-slate-400 mb-16">No docs matched your search query.</p>
+        )}
 
         {/* Quick Start */}
         <div className="max-w-4xl mx-auto">

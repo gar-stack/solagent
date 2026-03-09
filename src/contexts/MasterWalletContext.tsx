@@ -21,6 +21,9 @@ declare global {
 interface MasterWalletContextValue {
   address: string | null;
   balance: number | null;
+  role: 'viewer' | 'operator' | 'admin';
+  canOperateAgents: boolean;
+  canControlPlane: boolean;
   isConnecting: boolean;
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
@@ -28,6 +31,26 @@ interface MasterWalletContextValue {
 }
 
 const MasterWalletContext = createContext<MasterWalletContextValue | null>(null);
+
+function parseWalletAllowlist(value: string | undefined): Set<string> {
+  if (!value) return new Set();
+  return new Set(
+    value
+      .split(',')
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0)
+  );
+}
+
+const ADMIN_ALLOWLIST = parseWalletAllowlist(import.meta.env.VITE_ADMIN_WALLETS);
+const OPERATOR_ALLOWLIST = parseWalletAllowlist(import.meta.env.VITE_OPERATOR_WALLETS);
+
+function resolveRole(address: string | null): 'viewer' | 'operator' | 'admin' {
+  if (!address) return 'viewer';
+  if (ADMIN_ALLOWLIST.has(address)) return 'admin';
+  if (OPERATOR_ALLOWLIST.has(address)) return 'operator';
+  return 'viewer';
+}
 
 export function MasterWalletProvider({ children }: { children: React.ReactNode }) {
   const [address, setAddress] = useState<string | null>(null);
@@ -105,17 +128,20 @@ export function MasterWalletProvider({ children }: { children: React.ReactNode }
     };
   }, []);
 
-  const value = useMemo(
-    () => ({
+  const value = useMemo(() => {
+    const role = resolveRole(address);
+    return {
       address,
       balance,
+      role,
+      canOperateAgents: address ? role !== 'viewer' : false,
+      canControlPlane: address ? role === 'admin' : false,
       isConnecting,
       connect,
       disconnect,
       refresh,
-    }),
-    [address, balance, isConnecting, refresh]
-  );
+    };
+  }, [address, balance, isConnecting, refresh]);
 
   return <MasterWalletContext.Provider value={value}>{children}</MasterWalletContext.Provider>;
 }

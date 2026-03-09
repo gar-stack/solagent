@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,7 @@ import {
   XCircle,
   Loader2,
   Wifi,
+  ShieldAlert,
 } from 'lucide-react';
 import { useMasterWallet } from '@/contexts/MasterWalletContext';
 import {
@@ -29,6 +30,7 @@ import {
   type RpcBalanceResult,
   type RpcSignatureInfo,
 } from '@/lib/solanaRpc';
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 interface AgentStatus {
   id: string;
@@ -110,7 +112,7 @@ export function Dashboard() {
     if (typeof window === 'undefined') return false;
     return window.localStorage.getItem(DASHBOARD_KILL_SWITCH_KEY) === 'on';
   });
-  const { address, balance } = useMasterWallet();
+  const { address, balance, role, canOperateAgents, canControlPlane } = useMasterWallet();
 
   useEffect(() => {
     let isMounted = true;
@@ -217,6 +219,11 @@ export function Dashboard() {
   };
 
   const toggleAgent = (agentId: string) => {
+    if (!canOperateAgents) {
+      toast.error('Role restriction: operator or admin role required to manage agents.');
+      return;
+    }
+
     if (killSwitchEnabled) {
       toast.error('Execution paused. Disable emergency stop before starting or stopping agents.');
       return;
@@ -245,6 +252,11 @@ export function Dashboard() {
   };
 
   const toggleKillSwitch = () => {
+    if (!canControlPlane) {
+      toast.error('Role restriction: admin role required to control emergency stop.');
+      return;
+    }
+
     const next = !killSwitchEnabled;
     setKillSwitchEnabled(next);
     if (next) {
@@ -259,6 +271,23 @@ export function Dashboard() {
   const totalBalance = agents.reduce((sum, a) => sum + a.balance, 0);
   const totalProfit = agents.reduce((sum, a) => sum + a.profit, 0);
   const runningAgents = agents.filter((a) => a.status === 'running').length;
+  const txSuccessRate = transactions.length > 0
+    ? Math.round((transactions.filter((tx) => tx.status === 'success').length / transactions.length) * 100)
+    : 0;
+  const balanceSeries = useMemo(
+    () => agents.map((agent) => ({ name: agent.name.replace(' ', '\n'), balance: Number(agent.balance.toFixed(4)) })),
+    [agents]
+  );
+  const txSeries = useMemo(
+    () =>
+      [...transactions]
+        .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+        .map((tx) => ({
+          time: `${tx.timestamp.getHours().toString().padStart(2, '0')}:${tx.timestamp.getMinutes().toString().padStart(2, '0')}`,
+          success: tx.status === 'success' ? 1 : 0,
+        })),
+    [transactions]
+  );
 
   return (
     <section id="dashboard" className="py-16 sm:py-20 bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900">
@@ -287,6 +316,24 @@ export function Dashboard() {
               <p className="text-sm text-slate-400">Authenticated Master Wallet</p>
               <p className="text-lg font-semibold text-white">{address ? `${address.slice(0, 8)}...${address.slice(-6)}` : 'Unknown'}</p>
               <p className="text-sm text-slate-400">{balance !== null ? `${balance.toFixed(4)} SOL` : 'Balance unavailable'}</p>
+              <div className="mt-2 inline-flex items-center gap-2">
+                <Badge
+                  className={
+                    role === 'admin'
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                      : role === 'operator'
+                        ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30'
+                        : 'bg-slate-700 text-slate-200 border-slate-600'
+                  }
+                >
+                  Role: {role}
+                </Badge>
+                {!canOperateAgents && (
+                  <Badge className="bg-amber-500/15 text-amber-200 border-amber-500/30">
+                    Viewer mode: no execution controls
+                  </Badge>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -536,6 +583,58 @@ export function Dashboard() {
                       </div>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-slate-900 border-slate-800 md:col-span-2">
+                <CardHeader>
+                  <CardTitle className="text-white">Balance by Agent (SOL)</CardTitle>
+                </CardHeader>
+                <CardContent className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={balanceSeries}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                      <XAxis dataKey="name" stroke="#94a3b8" />
+                      <YAxis stroke="#94a3b8" />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: 8 }}
+                        labelStyle={{ color: '#e2e8f0' }}
+                      />
+                      <Bar dataKey="balance" fill="#22d3ee" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-slate-900 border-slate-800 md:col-span-2">
+                <CardHeader>
+                  <CardTitle className="text-white">Recent Transaction Reliability</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between rounded-lg bg-slate-800/50 p-3">
+                    <span className="text-slate-300">Success ratio</span>
+                    <span className="text-white font-semibold">{txSuccessRate}%</span>
+                  </div>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={txSeries}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                        <XAxis dataKey="time" stroke="#94a3b8" />
+                        <YAxis domain={[0, 1]} ticks={[0, 1]} stroke="#94a3b8" />
+                        <Tooltip
+                          contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: 8 }}
+                          labelStyle={{ color: '#e2e8f0' }}
+                        />
+                        <Area type="monotone" dataKey="success" stroke="#34d399" fill="#34d39933" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                  {!canControlPlane && (
+                    <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-200 text-sm">
+                      <ShieldAlert className="h-4 w-4" />
+                      Admin role is required for emergency stop controls.
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
