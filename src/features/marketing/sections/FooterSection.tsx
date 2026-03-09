@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 
 export function Footer() {
+  const appUrl = import.meta.env.VITE_APP_URL as string | undefined;
   return (
     <footer className="bg-slate-950 border-t border-slate-800">
       <div className="container mx-auto px-4 py-12">
@@ -114,6 +115,17 @@ export function Footer() {
               </li>
               <li>
                 <a 
+                  href={appUrl || 'https://vercel.com/new'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-slate-400 hover:text-white transition-colors inline-flex items-center"
+                >
+                  Live App
+                  <ExternalLink className="w-3 h-3 ml-1" />
+                </a>
+              </li>
+              <li>
+                <a 
                   href="https://solana.com/docs" 
                   target="_blank"
                   rel="noopener noreferrer"
@@ -144,7 +156,7 @@ export function Footer() {
             © 2026 SolAgent. Built with <Heart className="w-4 h-4 inline text-red-500" /> for Superteam Nigeria.
           </p>
           <p className="text-slate-600 text-sm">
-            Open source under MIT License
+            Open source under MIT License{appUrl ? ` • ${appUrl}` : ' • set VITE_APP_URL after Vercel deploy'}
           </p>
         </div>
       </div>

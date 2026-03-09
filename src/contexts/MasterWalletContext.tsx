@@ -1,30 +1,21 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { WalletReadyState } from '@solana/wallet-adapter-base';
 import { toast } from 'sonner';
 import { LAMPORTS_PER_SOL, rpcCall, type RpcBalanceResult } from '@/lib/solanaRpc';
-
-interface SolanaProvider {
-  isPhantom?: boolean;
-  isConnected?: boolean;
-  publicKey?: { toString(): string };
-  connect: (options?: { onlyIfTrusted?: boolean }) => Promise<{ publicKey: { toString(): string } }>;
-  disconnect: () => Promise<void>;
-  on?: (event: 'accountChanged', handler: (publicKey: { toString(): string } | null) => void) => void;
-  off?: (event: 'accountChanged', handler: (publicKey: { toString(): string } | null) => void) => void;
-}
-
-declare global {
-  interface Window {
-    solana?: SolanaProvider;
-  }
-}
+import { parseWalletAllowlist, resolveRoleFromAllowlists } from './walletRoles';
 
 interface MasterWalletContextValue {
   address: string | null;
+  walletName: string | null;
+  hasWalletSelection: boolean;
+  selectedWalletReady: WalletReadyState | null;
   balance: number | null;
   role: 'viewer' | 'operator' | 'admin';
   canOperateAgents: boolean;
   canControlPlane: boolean;
   isConnecting: boolean;
+  isConnected: boolean;
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
   refresh: () => Promise<void>;
@@ -32,30 +23,20 @@ interface MasterWalletContextValue {
 
 const MasterWalletContext = createContext<MasterWalletContextValue | null>(null);
 
-function parseWalletAllowlist(value: string | undefined): Set<string> {
-  if (!value) return new Set();
-  return new Set(
-    value
-      .split(',')
-      .map((item) => item.trim())
-      .filter((item) => item.length > 0)
-  );
-}
-
 const ADMIN_ALLOWLIST = parseWalletAllowlist(import.meta.env.VITE_ADMIN_WALLETS);
 const OPERATOR_ALLOWLIST = parseWalletAllowlist(import.meta.env.VITE_OPERATOR_WALLETS);
 
-function resolveRole(address: string | null): 'viewer' | 'operator' | 'admin' {
-  if (!address) return 'viewer';
-  if (ADMIN_ALLOWLIST.has(address)) return 'admin';
-  if (OPERATOR_ALLOWLIST.has(address)) return 'operator';
-  return 'viewer';
-}
-
 export function MasterWalletProvider({ children }: { children: React.ReactNode }) {
-  const [address, setAddress] = useState<string | null>(null);
+  const {
+    publicKey,
+    wallet,
+    connected,
+    connecting,
+    connect: walletConnect,
+    disconnect: walletDisconnect,
+  } = useWallet();
   const [balance, setBalance] = useState<number | null>(null);
-  const [isConnecting, setIsConnecting] = useState<boolean>(false);
+  const address = publicKey?.toBase58() ?? null;
 
   const refresh = useCallback(async () => {
     if (!address) return;
@@ -63,85 +44,76 @@ export function MasterWalletProvider({ children }: { children: React.ReactNode }
     setBalance(result.value / LAMPORTS_PER_SOL);
   }, [address]);
 
-  const connect = async () => {
-    if (!window.solana?.isPhantom) {
-      toast.error('Phantom wallet not detected');
+  const connect = useCallback(async () => {
+    if (!wallet) {
+      toast.error('No wallet selected. Choose a wallet from the wallet picker.');
       return;
     }
 
-    setIsConnecting(true);
+    if (wallet.readyState === WalletReadyState.Unsupported || wallet.readyState === WalletReadyState.NotDetected) {
+      toast.error(`${wallet.adapter.name} is not available in this browser`);
+      return;
+    }
+
     try {
-      const result = await window.solana.connect();
-      const nextAddress = result.publicKey.toString();
-      setAddress(nextAddress);
-      const bal = await rpcCall<RpcBalanceResult>('getBalance', [nextAddress, { commitment: 'confirmed' }]);
-      setBalance(bal.value / LAMPORTS_PER_SOL);
+      await walletConnect();
       toast.success('Master wallet connected');
     } catch (error) {
       toast.error(`Wallet connection failed: ${error instanceof Error ? error.message : 'unknown error'}`);
-    } finally {
-      setIsConnecting(false);
     }
-  };
+  }, [wallet, walletConnect]);
 
-  const disconnect = async () => {
+  const disconnect = useCallback(async () => {
     try {
-      await window.solana?.disconnect();
-      setAddress(null);
-      setBalance(null);
+      await walletDisconnect();
       toast.info('Master wallet disconnected');
     } catch (error) {
       toast.error(`Disconnect failed: ${error instanceof Error ? error.message : 'unknown error'}`);
     }
-  };
+  }, [walletDisconnect]);
 
   useEffect(() => {
-    const provider = window.solana;
-    if (!provider) return;
-
-    const onAccountChanged = (publicKey: { toString(): string } | null) => {
-      if (!publicKey) {
-        setAddress(null);
-        setBalance(null);
-        return;
-      }
-
-      const nextAddress = publicKey.toString();
-      setAddress(nextAddress);
-      void rpcCall<RpcBalanceResult>('getBalance', [nextAddress, { commitment: 'confirmed' }])
-        .then((bal) => setBalance(bal.value / LAMPORTS_PER_SOL))
-        .catch(() => setBalance(null));
-    };
-
-    provider.on?.('accountChanged', onAccountChanged);
-
-    if (provider.isConnected && provider.publicKey) {
-      const nextAddress = provider.publicKey.toString();
-      setAddress(nextAddress);
-      void rpcCall<RpcBalanceResult>('getBalance', [nextAddress, { commitment: 'confirmed' }])
-        .then((bal) => setBalance(bal.value / LAMPORTS_PER_SOL))
-        .catch(() => setBalance(null));
+    if (!address) {
+      setBalance(null);
+      return;
     }
 
+    let cancelled = false;
+    void rpcCall<RpcBalanceResult>('getBalance', [address, { commitment: 'confirmed' }])
+      .then((bal) => {
+        if (!cancelled) {
+          setBalance(bal.value / LAMPORTS_PER_SOL);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setBalance(null);
+        }
+      });
+
     return () => {
-      provider.off?.('accountChanged', onAccountChanged);
+      cancelled = true;
     };
-  }, []);
+  }, [address]);
 
   const value = useMemo(() => {
-    const role = resolveRole(address);
+    const role = resolveRoleFromAllowlists(address, ADMIN_ALLOWLIST, OPERATOR_ALLOWLIST);
     return {
       address,
+      walletName: wallet?.adapter.name ?? null,
+      hasWalletSelection: Boolean(wallet),
+      selectedWalletReady: wallet?.readyState ?? null,
       balance,
       role,
       canOperateAgents: address ? role !== 'viewer' : false,
       canControlPlane: address ? role === 'admin' : false,
-      isConnecting,
+      isConnecting: connecting,
+      isConnected: connected,
       connect,
       disconnect,
       refresh,
     };
-  }, [address, balance, isConnecting, refresh]);
+  }, [address, wallet, balance, connecting, connected, refresh, connect, disconnect]);
 
   return <MasterWalletContext.Provider value={value}>{children}</MasterWalletContext.Provider>;
 }

@@ -6,42 +6,21 @@ Agentic Wallets for AI Agents on Solana.
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)](https://typescriptlang.org)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-SolAgent is a challenge prototype for building autonomous AI agents that can create wallets, sign transactions, and execute selected actions on Solana.
-
-## Challenge Submission
-
-Submission target: DeFi Developer Challenge - Agentic Wallets for AI Agents
+Submission target:
 https://superteam.fun/earn/listing/defi-developer-challenge-agentic-wallets-for-ai-agents
 
-## Implemented Scope
+## What It Does
 
-- Programmatic wallet creation (Ed25519 keypairs)
-- Message and transaction signing
-- SOL transfer
-- SPL token transfer
-- Devnet/testnet airdrop support
-- Agent framework with risk checks (confidence threshold, allowed actions, cooldown, token lists)
-- Trading bot and LP bot prototypes (decision logic currently mock/simulated)
-- Route-based web app (`/`, `/dashboard`, `/docs`) with protected dashboard access
-- Signed policy lifecycle with versioned apply/rollback support
-- Append-only audit log chain with integrity verification
-- Global emergency kill-switch for managed CLI execution paths
+- SDK + CLI for agent wallets and controlled execution
+- Web dashboard with master-wallet gate and RBAC (`viewer` / `operator` / `admin`)
+- Multi-wallet web support (Phantom, Solflare, Backpack)
+- Signed policy lifecycle + append-only audit chain + emergency kill-switch
 
-## Important Status Notes
+## Architecture (Abstract)
 
-- Web dashboard route requires connected master wallet (Phantom) before access.
-- Dashboard navigation is blocked with visible toast feedback when wallet is not connected.
-- Web dashboard no longer accepts CLI auth token/code input.
-- CLI/SDK workflows remain available for users who prefer non-web operation.
-- The dashboard now reads live devnet balances, recent signatures, and network stats via RPC.
-- Trading/LP analyzers now ingest live SOL market signals (Jupiter quote + CoinGecko metrics) with fallback handling.
-- `executeDecision` currently executes `transfer` and `hold`; other action types are placeholders.
-- CLI is packaged as a local binary at `dist-cli/solagent.cjs` via `npm run build:cli`.
-- CLI default wallet storage supports encrypted-at-rest config via `SOLAGENT_MASTER_PASSWORD`.
-- CLI exposes `policy:*`, `audit:*`, and `control:*` commands for control-plane operations.
-- CI pipeline now enforces lint, unit tests, and artifact builds on push/PR.
-- Web dashboard includes wallet-based RBAC (`viewer` / `operator` / `admin`) using allowlist env vars.
-- Initial unit tests are available for policy and CLI auth verification.
+1. **Control Plane**: policy, audit, kill-switch (`src/sdk`, `src/cli`)
+2. **Execution Plane**: agent loop and wallet operations (`src/agents`, `src/sdk`)
+3. **Presentation Plane**: routed web UI (`/`, `/dashboard`, `/docs`)
 
 ## Quick Start
 
@@ -52,150 +31,61 @@ npm install
 npm run dev
 ```
 
-Optional web RBAC config:
+## Web Config
 
 ```bash
-VITE_OPERATOR_WALLETS=walletA,walletB
-VITE_ADMIN_WALLETS=walletC
+VITE_SOLANA_RPC_URL=https://api.devnet.solana.com
+VITE_OPERATOR_WALLETS=<comma-separated-wallets>
+VITE_ADMIN_WALLETS=<comma-separated-wallets>
+VITE_APP_URL=https://your-project.vercel.app
 ```
 
-## Build and Validation
+## CLI Guide (Short)
+
+```bash
+npm run build:cli
+node dist-cli/solagent.cjs --help
+
+# wallet
+node dist-cli/solagent.cjs wallet:create --network devnet --save
+node dist-cli/solagent.cjs wallet:balance
+
+# control plane
+node dist-cli/solagent.cjs policy:show
+node dist-cli/solagent.cjs control:status
+node dist-cli/solagent.cjs audit:verify
+```
+
+Detailed CLI walkthrough:
+- [Getting Started](docs/GETTING_STARTED.md)
+- [API Reference](docs/API_REFERENCE.md)
+
+## Deploy (Vercel Manual)
+
+```bash
+vercel
+vercel --prod
+```
+
+After deploy, set `VITE_APP_URL` to your production URL and redeploy.
+
+## Validation
 
 ```bash
 npm run lint
 npm run test:unit
 npm run build
 npm run build:cli
-npm test
 ```
 
-## CLI Binary Usage
+## Links
 
-```bash
-# Build the CLI binary
-npm run build:cli
-
-# Run directly
-node dist-cli/solagent.cjs --help
-
-# Optional: install local binary in your shell
-npm link
-solagent --help
-
-# Control plane
-solagent control:status
-solagent control:pause --reason "manual stop"
-solagent control:resume
-
-# Policy lifecycle
-solagent policy:apply --file ./policy.json
-solagent policy:show
-solagent policy:rollback --version 1
-
-# Audit trail
-solagent audit:tail --limit 20
-solagent audit:verify
-```
-
-## Judge Demo Script
-
-Use this sequence for a live CLI demo on devnet.
-
-```bash
-# 1) Build and set wallet encryption password
-npm run build:cli
-export SOLAGENT_MASTER_PASSWORD='replace-with-strong-passphrase'
-
-# 2) Create and save default wallet
-node dist-cli/solagent.cjs wallet:create --network devnet --save
-node dist-cli/solagent.cjs wallet:balance
-
-# 3) Fund wallet (if RPC airdrop rate-limits, use https://faucet.solana.com/)
-node dist-cli/solagent.cjs wallet:airdrop --amount 0.2
-node dist-cli/solagent.cjs wallet:balance
-
-# 4) Apply signed execution policy
-cat > /tmp/policy.json <<'EOF'
-{
-  "minConfidence": 0.6,
-  "allowedActions": ["transfer", "hold"],
-  "maxAmountByAction": { "transfer": 0.2 },
-  "blockedRecipients": []
-}
-EOF
-node dist-cli/solagent.cjs policy:apply --file /tmp/policy.json
-node dist-cli/solagent.cjs policy:show
-
-# 5) Control-plane kill switch checks
-node dist-cli/solagent.cjs control:status
-node dist-cli/solagent.cjs control:pause --reason "demo pause"
-node dist-cli/solagent.cjs control:resume
-
-# 6) Audit integrity checks
-node dist-cli/solagent.cjs audit:tail --limit 20
-node dist-cli/solagent.cjs audit:verify
-```
-
-Expected demo outcomes:
-- policy version increments and shows as active
-- control plane toggles paused/resumed state
-- audit log records policy/control events
-- audit chain verification returns valid
-
-## SDK Example
-
-```ts
-import { AgenticWallet } from './src/sdk';
-
-const wallet = AgenticWallet.generate({
-  network: 'devnet',
-  commitment: 'confirmed',
-});
-
-console.log('Wallet address:', wallet.getAddress());
-
-await wallet.requestAirdrop(1);
-const balance = await wallet.getSolBalance();
-console.log('Balance:', balance, 'SOL');
-```
-
-## Project Structure
-
-```text
-solagent/
-├── src/
-│   ├── sdk/                       # Core wallet + agent abstractions
-│   ├── agents/                    # Trading and liquidity bot implementations
-│   ├── cli/                       # CLI source
-│   ├── features/dashboard/        # Dashboard UI domain
-│   ├── features/marketing/        # Landing/docs/footer sections
-│   ├── features/navigation/       # Top navigation
-│   ├── contexts/                  # Shared master-wallet state
-│   ├── pages/                     # Route-level pages
-│   ├── lib/                       # RPC and shared utilities
-│   └── components/ui/             # UI component library
-├── docs/
-├── README.md
-├── SKILLS.md
-└── package.json
-```
-
-## Documentation
-
-- [Getting Started](docs/GETTING_STARTED.md)
-- [API Reference](docs/API_REFERENCE.md)
-- [Security Guide](docs/SECURITY.md)
-- [Agent Development](docs/AGENTS.md)
+- [Live App (set via `VITE_APP_URL` in UI)](https://vercel.com/new)
+- [Deployment Guide](docs/DEPLOYMENT.md)
 - [Deep Dive](docs/DEEP_DIVE.md)
+- [Security Guide](docs/SECURITY.md)
+- [Contributing](docs/CONTRIBUTING.md)
 
-## Security
+## Security Note
 
-Do not use this prototype with high-value production funds.
-
-- Never commit private keys or `.solagent.json`.
-- Use a dedicated low-balance devnet wallet for testing.
-- Use strict `allowedActions`, `maxTransactionAmount`, and token lists.
-
-## License
-
-MIT - see [LICENSE](LICENSE).
+Prototype only. Do not use high-value funds.

@@ -13,7 +13,7 @@ const sections = [
   {
     id: 'doc-access',
     title: '2. Access Model',
-    body: 'Dashboard agent controls require a connected master wallet (Phantom). CLI/SDK users operate directly via terminal/code paths without web dashboard control.',
+    body: 'Dashboard agent controls require a connected master wallet (Phantom, Solflare, Backpack). CLI/SDK users operate directly via terminal/code paths without web dashboard control.',
   },
   {
     id: 'doc-agents',
@@ -115,6 +115,13 @@ export function DocsPortal() {
             <a href="https://github.com/gar-stack/solagent/blob/main/docs/DEEP_DIVE.md" target="_blank" rel="noopener noreferrer">
               <Workflow className="w-4 h-4 mr-2" />
               Deep Dive
+              <ExternalLink className="w-3 h-3 ml-2" />
+            </a>
+          </Button>
+          <Button variant="outline" className="border-slate-700 text-slate-200 hover:bg-slate-800" asChild>
+            <a href="https://github.com/gar-stack/solagent/blob/main/docs/DEPLOYMENT.md" target="_blank" rel="noopener noreferrer">
+              <TerminalSquare className="w-4 h-4 mr-2" />
+              Deployment Guide
               <ExternalLink className="w-3 h-3 ml-2" />
             </a>
           </Button>

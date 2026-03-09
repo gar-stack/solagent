@@ -20,17 +20,26 @@ npm install
 npm run dev
 ```
 
-Optional `.env` role mapping for dashboard RBAC:
+Optional `.env` role mapping for dashboard RBAC and deployment metadata:
 
 ```bash
+VITE_SOLANA_RPC_URL=https://api.devnet.solana.com
 VITE_OPERATOR_WALLETS=<comma-separated-wallets>
 VITE_ADMIN_WALLETS=<comma-separated-wallets>
+VITE_APP_URL=https://your-project.vercel.app
 ```
 
 Web note:
-- Dashboard access requires connecting a master wallet in-browser.
+- Dashboard access requires connecting a master wallet in-browser (Phantom, Solflare, Backpack).
 - Connected wallets not in allowlists default to `viewer` role (read-only controls).
 - CLI/SDK users can run agent workflows without web login.
+
+## Web Wallet Setup
+
+1. Click `Select Wallet` in top navigation.
+2. Pick Phantom, Solflare, or Backpack in the wallet modal.
+3. Connect and verify your role badge (`viewer`, `operator`, or `admin`).
+4. Open `/dashboard` and confirm role-based controls.
 
 ## Validate Project
 
@@ -47,6 +56,29 @@ npm test
 npm run build:cli
 node dist-cli/solagent.cjs --help
 ```
+
+## Deploy To Vercel (Manual)
+
+```bash
+# link project
+vercel
+
+# deploy production
+vercel --prod
+```
+
+After first production deploy:
+1. Copy the deployment URL.
+2. Set `VITE_APP_URL` in Vercel environment variables.
+3. Redeploy with `vercel --prod`.
+
+See full guide: [Deployment Guide](./DEPLOYMENT.md)
+
+Post-deploy checklist:
+1. Open `/`, `/docs`, and `/dashboard` with hard refresh.
+2. Verify dashboard redirects when wallet is disconnected.
+3. Connect each supported wallet and verify role behavior.
+4. Confirm footer live-app link opens deployed URL.
 
 ## Milestone 1 Control Plane
 
@@ -117,6 +149,6 @@ await bot.start(60000);
 
 ## Notes
 
-- Trading and LP bots currently use simulated market data.
+- Trading and LP bots ingest live SOL signals with fallback sources.
 - Dashboard fetches live devnet balances, signatures, and slot/block-height data.
 - CLI is packaged locally through `npm run build:cli`.

@@ -112,7 +112,7 @@ export function Dashboard() {
     if (typeof window === 'undefined') return false;
     return window.localStorage.getItem(DASHBOARD_KILL_SWITCH_KEY) === 'on';
   });
-  const { address, balance, role, canOperateAgents, canControlPlane } = useMasterWallet();
+  const { address, walletName, balance, role, canOperateAgents, canControlPlane } = useMasterWallet();
 
   useEffect(() => {
     let isMounted = true;
@@ -314,7 +314,9 @@ export function Dashboard() {
           <CardContent className="pt-6">
             <div className="flex flex-col gap-1">
               <p className="text-sm text-slate-400">Authenticated Master Wallet</p>
-              <p className="text-lg font-semibold text-white">{address ? `${address.slice(0, 8)}...${address.slice(-6)}` : 'Unknown'}</p>
+              <p className="text-lg font-semibold text-white">
+                {address ? `${walletName ? `${walletName} • ` : ''}${address.slice(0, 8)}...${address.slice(-6)}` : 'Unknown'}
+              </p>
               <p className="text-sm text-slate-400">{balance !== null ? `${balance.toFixed(4)} SOL` : 'Balance unavailable'}</p>
               <div className="mt-2 inline-flex items-center gap-2">
                 <Badge

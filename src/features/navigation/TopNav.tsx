@@ -2,6 +2,8 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useMasterWallet } from '@/contexts/MasterWalletContext';
+import { useWalletModal } from '@solana/wallet-adapter-react-ui';
+import { WalletReadyState } from '@solana/wallet-adapter-base';
 import { Github, LogOut, RefreshCw, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -12,7 +14,38 @@ function navClass({ isActive }: { isActive: boolean }) {
 export function TopNav() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { address, balance, role, connect, disconnect, refresh, isConnecting } = useMasterWallet();
+  const { setVisible } = useWalletModal();
+  const {
+    address,
+    walletName,
+    hasWalletSelection,
+    selectedWalletReady,
+    balance,
+    role,
+    connect,
+    disconnect,
+    refresh,
+    isConnecting,
+    isConnected,
+  } = useMasterWallet();
+
+  const handleConnect = async () => {
+    if (!hasWalletSelection) {
+      setVisible(true);
+      return;
+    }
+
+    if (
+      selectedWalletReady === WalletReadyState.Unsupported ||
+      selectedWalletReady === WalletReadyState.NotDetected
+    ) {
+      toast.error('Selected wallet is unavailable. Choose another wallet.');
+      setVisible(true);
+      return;
+    }
+
+    await connect();
+  };
 
   const guardDashboardNavigation = (event: { preventDefault: () => void }) => {
     if (address) return;
@@ -44,7 +77,9 @@ export function TopNav() {
           {address ? (
             <>
               <div className="hidden sm:block text-right mr-2">
-                <p className="text-xs text-slate-300">{address.slice(0, 6)}...{address.slice(-4)}</p>
+                <p className="text-xs text-slate-300">
+                  {walletName ? `${walletName} • ` : ''}{address.slice(0, 6)}...{address.slice(-4)}
+                </p>
                 <p className="text-[11px] text-slate-500">{balance !== null ? `${balance.toFixed(4)} SOL` : 'Balance --'}</p>
                 <Badge
                   className={
@@ -67,9 +102,20 @@ export function TopNav() {
               </Button>
             </>
           ) : (
-            <Button size="sm" className="bg-cyan-600 hover:bg-cyan-500 text-white" onClick={() => void connect()} disabled={isConnecting}>
+            <Button size="sm" className="bg-cyan-600 hover:bg-cyan-500 text-white" onClick={() => void handleConnect()} disabled={isConnecting}>
               <Wallet className="w-4 h-4 mr-1" />
-              {isConnecting ? 'Connecting...' : 'Connect Wallet'}
+              {isConnecting
+                ? 'Connecting...'
+                : !hasWalletSelection
+                  ? 'Select Wallet'
+                  : selectedWalletReady === WalletReadyState.Unsupported || selectedWalletReady === WalletReadyState.NotDetected
+                    ? 'Wallet Unavailable'
+                    : `Connect ${walletName ?? 'Wallet'}`}
+            </Button>
+          )}
+          {!isConnected && hasWalletSelection && (
+            <Button size="sm" variant="secondary" className="bg-slate-800 text-slate-200 hover:bg-slate-700" onClick={() => setVisible(true)}>
+              Change Wallet
             </Button>
           )}
           <Button size="sm" variant="outline" className="border-slate-700 text-slate-300 hover:bg-slate-800" asChild>
