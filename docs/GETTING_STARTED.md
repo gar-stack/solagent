@@ -57,20 +57,12 @@ npm run build:cli
 node dist-cli/solagent.cjs --help
 ```
 
-## Deploy To Vercel (Manual)
+## Deploy To Vercel (GitHub Auto-Deploy)
 
-```bash
-# link project
-vercel
-
-# deploy production
-vercel --prod
-```
-
-After first production deploy:
-1. Copy the deployment URL.
-2. Set `VITE_APP_URL` in Vercel environment variables.
-3. Redeploy with `vercel --prod`.
+1. Connect the GitHub repository to Vercel.
+2. Set `VITE_SOLANA_RPC_URL`, `VITE_OPERATOR_WALLETS`, `VITE_ADMIN_WALLETS`, and `VITE_APP_URL`.
+3. Push to `main` to trigger production deployment.
+4. Use pull requests for automatic preview deployments.
 
 See full guide: [Deployment Guide](./DEPLOYMENT.md)
 

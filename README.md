@@ -60,14 +60,12 @@ Detailed CLI walkthrough:
 - [Getting Started](docs/GETTING_STARTED.md)
 - [API Reference](docs/API_REFERENCE.md)
 
-## Deploy (Vercel Manual)
+## Deploy (Vercel GitHub Auto-Deploy)
 
-```bash
-vercel
-vercel --prod
-```
-
-After deploy, set `VITE_APP_URL` to your production URL and redeploy.
+1. Connect this GitHub repository to Vercel.
+2. Configure env vars in Vercel project settings (`VITE_SOLANA_RPC_URL`, `VITE_OPERATOR_WALLETS`, `VITE_ADMIN_WALLETS`, `VITE_APP_URL`).
+3. Push to `main` for production deployment.
+4. Open preview deployments on pull requests for QA.
 
 ## Validation
 

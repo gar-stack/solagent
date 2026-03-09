@@ -156,7 +156,7 @@ export function Footer() {
             © 2026 SolAgent. Built with <Heart className="w-4 h-4 inline text-red-500" /> for Superteam Nigeria.
           </p>
           <p className="text-slate-600 text-sm">
-            Open source under MIT License{appUrl ? ` • ${appUrl}` : ' • set VITE_APP_URL after Vercel deploy'}
+            Open source under MIT License{appUrl ? ` • ${appUrl}` : ' • set VITE_APP_URL in Vercel project settings'}
           </p>
         </div>
       </div>

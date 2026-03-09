@@ -1,10 +1,10 @@
-# Deployment Guide (Vercel Manual)
+# Deployment Guide (Vercel GitHub Auto-Deploy)
 
 ## Prerequisites
 
 - Vercel account
-- Vercel CLI installed (`npm i -g vercel`)
 - Project built and tests passing
+- GitHub repository connected to Vercel
 
 ## Environment Variables
 
@@ -13,21 +13,14 @@ Set these in Vercel project settings:
 - `VITE_SOLANA_RPC_URL` (example: `https://api.devnet.solana.com`)
 - `VITE_OPERATOR_WALLETS` (comma-separated wallet addresses)
 - `VITE_ADMIN_WALLETS` (comma-separated wallet addresses)
-- `VITE_APP_URL` (your final production URL after first deploy)
+- `VITE_APP_URL` (your production domain, e.g. `https://your-project.vercel.app`)
 
-## First Deploy
+## Deployment Flow
 
-```bash
-vercel
-```
-
-Follow prompts to link the local repo to your Vercel project.
-
-## Production Deploy
-
-```bash
-vercel --prod
-```
+1. Connect the repository in Vercel.
+2. Set environment variables.
+3. Push to `main` to trigger production deployment.
+4. Create pull requests to get preview deployments automatically.
 
 ## Post-Deploy Checklist
 
