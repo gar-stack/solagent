@@ -12,4 +12,16 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+          if (id.includes('recharts')) return 'vendor-charts';
+          if (id.includes('@solana') || id.includes('tweetnacl') || id.includes('bs58')) return 'vendor-solana';
+          return 'vendor-core';
+        },
+      },
+    },
+  },
 });
