@@ -14,6 +14,8 @@ export type {
   AgentConfig,
   MarketData,
 } from './AIAgent';
+export { evaluateDecisionPolicy } from './policy';
+export type { ActionPolicy, PolicyResult } from './policy';
 
 // Re-export agents
 export { TradingBot, type TradingStrategy } from '../agents/TradingBot';

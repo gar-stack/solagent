@@ -4,8 +4,8 @@ import { Command } from 'commander';
 import { AgenticWallet, TradingBot, LiquidityProvider } from '../sdk';
 import * as fs from 'fs';
 import * as path from 'path';
-import nacl from 'tweetnacl';
-import bs58 from 'bs58';
+import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto';
+import { createCliAuthCode, type CliAuthPayload } from '../lib/cliAuth';
 
 const program = new Command();
 
@@ -13,16 +13,63 @@ interface Config {
   network: 'devnet' | 'mainnet-beta' | 'testnet';
   rpcUrl?: string;
   defaultWallet?: string;
+  encryptedDefaultWallet?: string;
 }
 
 const CONFIG_PATH = path.join(process.cwd(), '.solagent.json');
 
-function toBase64Url(input: string): string {
-  return Buffer.from(input, 'utf-8')
-    .toString('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/g, '');
+function encryptSecret(secret: string, passphrase: string): string {
+  const iv = randomBytes(12);
+  const salt = randomBytes(16);
+  const key = scryptSync(passphrase, salt, 32);
+  const cipher = createCipheriv('aes-256-gcm', key, iv);
+  const encrypted = Buffer.concat([cipher.update(secret, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return JSON.stringify({
+    v: 1,
+    alg: 'aes-256-gcm',
+    iv: iv.toString('base64'),
+    salt: salt.toString('base64'),
+    tag: tag.toString('base64'),
+    data: encrypted.toString('base64'),
+  });
+}
+
+function decryptSecret(payload: string, passphrase: string): string {
+  const parsed = JSON.parse(payload) as {
+    iv: string;
+    salt: string;
+    tag: string;
+    data: string;
+  };
+  const iv = Buffer.from(parsed.iv, 'base64');
+  const salt = Buffer.from(parsed.salt, 'base64');
+  const tag = Buffer.from(parsed.tag, 'base64');
+  const data = Buffer.from(parsed.data, 'base64');
+  const key = scryptSync(passphrase, salt, 32);
+  const decipher = createDecipheriv('aes-256-gcm', key, iv);
+  decipher.setAuthTag(tag);
+  const decrypted = Buffer.concat([decipher.update(data), decipher.final()]);
+  return decrypted.toString('utf8');
+}
+
+function resolvePrivateKey(flagKey: string | undefined, config: Config): string | undefined {
+  if (flagKey) return flagKey;
+
+  if (config.encryptedDefaultWallet) {
+    const passphrase = process.env.SOLAGENT_MASTER_PASSWORD;
+    if (!passphrase) {
+      throw new Error('Encrypted wallet configured. Set SOLAGENT_MASTER_PASSWORD to unlock it.');
+    }
+    return decryptSecret(config.encryptedDefaultWallet, passphrase);
+  }
+
+  if (config.defaultWallet) {
+    console.warn('⚠️ Using plaintext default wallet from config. Migrate by re-saving wallet with SOLAGENT_MASTER_PASSWORD set.');
+    return config.defaultWallet;
+  }
+
+  return undefined;
 }
 
 function loadConfig(): Config {
@@ -61,10 +108,17 @@ program
 
     if (options.save) {
       const config = loadConfig();
-      config.defaultWallet = wallet.getPrivateKey();
+      const passphrase = process.env.SOLAGENT_MASTER_PASSWORD;
+      if (!passphrase) {
+        console.error('❌ Set SOLAGENT_MASTER_PASSWORD before using --save to store encrypted wallet credentials.');
+        process.exit(1);
+      }
+
+      config.encryptedDefaultWallet = encryptSecret(wallet.getPrivateKey(), passphrase);
+      delete config.defaultWallet;
       config.network = options.network;
       saveConfig(config);
-      console.log('\n💾 Wallet saved as default');
+      console.log('\n💾 Wallet encrypted and saved as default');
     }
 
     console.log('\n⚠️  IMPORTANT: Save your private key securely. It cannot be recovered!');
@@ -76,7 +130,7 @@ program
   .option('-k, --key <key>', 'Private key (or use default)')
   .action(async (options) => {
     const config = loadConfig();
-    const privateKey = options.key || config.defaultWallet;
+    const privateKey = resolvePrivateKey(options.key, config);
 
     if (!privateKey) {
       console.error('❌ No private key provided. Use --key or set a default wallet.');
@@ -114,7 +168,7 @@ program
   .option('-a, --amount <amount>', 'Amount in SOL', '1')
   .action(async (options) => {
     const config = loadConfig();
-    const privateKey = options.key || config.defaultWallet;
+    const privateKey = resolvePrivateKey(options.key, config);
 
     if (!privateKey) {
       console.error('❌ No private key provided. Use --key or set a default wallet.');
@@ -145,7 +199,7 @@ program
   .requiredOption('-a, --amount <amount>', 'Amount in SOL')
   .action(async (options) => {
     const config = loadConfig();
-    const privateKey = options.key || config.defaultWallet;
+    const privateKey = resolvePrivateKey(options.key, config);
 
     if (!privateKey) {
       console.error('❌ No private key provided. Use --key or set a default wallet.');
@@ -180,7 +234,7 @@ program
   .option('-i, --interval <ms>', 'Check interval in milliseconds', '60000')
   .action(async (options) => {
     const config = loadConfig();
-    const privateKey = options.key || config.defaultWallet;
+    const privateKey = resolvePrivateKey(options.key, config);
 
     if (!privateKey) {
       console.error('❌ No private key provided. Use --key or set a default wallet.');
@@ -229,7 +283,7 @@ program
   .option('-i, --interval <ms>', 'Check interval in milliseconds', '300000')
   .action(async (options) => {
     const config = loadConfig();
-    const privateKey = options.key || config.defaultWallet;
+    const privateKey = resolvePrivateKey(options.key, config);
 
     if (!privateKey) {
       console.error('❌ No private key provided. Use --key or set a default wallet.');
@@ -308,7 +362,7 @@ program
   .action(async (options) => {
     try {
       const config = loadConfig();
-      const privateKey = options.key || config.defaultWallet;
+      const privateKey = resolvePrivateKey(options.key, config);
 
       if (!privateKey) {
         console.error('❌ No private key provided. Use --key or set a default wallet.');
@@ -322,7 +376,7 @@ program
 
       const ttlSeconds = Math.max(60, parseInt(options.ttl, 10) || 900);
       const now = Math.floor(Date.now() / 1000);
-      const payload = {
+      const payload: CliAuthPayload = {
         ver: 1,
         kind: 'cli-auth',
         wallet: wallet.getAddress(),
@@ -331,11 +385,7 @@ program
         exp: now + ttlSeconds,
       };
 
-      const payloadJson = JSON.stringify(payload);
-      const payloadB64 = toBase64Url(payloadJson);
-      const signature = nacl.sign.detached(Buffer.from(payloadB64, 'utf-8'), bs58.decode(privateKey));
-      const signatureB58 = bs58.encode(signature);
-      const code = `${payloadB64}.${signatureB58}`;
+      const code = createCliAuthCode(privateKey, payload);
 
       console.log('✅ Dashboard access code generated');
       console.log(`⏱️  Expires in: ${ttlSeconds} seconds`);

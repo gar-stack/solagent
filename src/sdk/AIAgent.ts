@@ -1,4 +1,5 @@
 import { AgenticWallet, type AgentDecision, type WalletState } from './AgenticWallet';
+import { evaluateDecisionPolicy, type ActionPolicy } from './policy';
 
 export interface AgentConfig {
   name: string;
@@ -9,6 +10,7 @@ export interface AgentConfig {
   allowedActions: string[];
   blacklistedTokens: string[];
   whitelistedTokens?: string[];
+  policy?: ActionPolicy;
 }
 
 export interface MarketData {
@@ -132,34 +134,34 @@ export abstract class AIAgent {
 
   // Determine if decision should be executed
   protected shouldExecuteDecision(decision: AgentDecision): boolean {
-    // Check confidence threshold
-    if (decision.confidence < 0.6) {
-      return false;
-    }
+    const basePolicy: ActionPolicy = {
+      minConfidence: 0.6,
+      allowedActions: this.config.allowedActions as AgentDecision['action'][],
+      maxAmountByAction: {
+        transfer: this.config.maxTransactionAmount,
+        swap: this.config.maxTransactionAmount,
+        stake: this.config.maxTransactionAmount,
+        unstake: this.config.maxTransactionAmount,
+        provide_liquidity: this.config.maxTransactionAmount,
+        remove_liquidity: this.config.maxTransactionAmount,
+      },
+      blockedTokens: this.config.blacklistedTokens,
+      allowedTokens: this.config.whitelistedTokens,
+    };
 
-    // Check if action is allowed
-    if (!this.config.allowedActions.includes(decision.action)) {
-      return false;
-    }
+    const mergedPolicy: ActionPolicy = {
+      ...basePolicy,
+      ...this.config.policy,
+      maxAmountByAction: {
+        ...basePolicy.maxAmountByAction,
+        ...this.config.policy?.maxAmountByAction,
+      },
+    };
 
-    // Check amount limits
-    if (decision.params.amount > this.config.maxTransactionAmount) {
-      console.log('Transaction amount exceeds maximum allowed');
+    const policyResult = evaluateDecisionPolicy(decision, mergedPolicy);
+    if (!policyResult.allowed) {
+      console.log(`Policy blocked decision: ${policyResult.reason}`);
       return false;
-    }
-
-    // Check token blacklist
-    if (decision.params.token && this.config.blacklistedTokens.includes(decision.params.token)) {
-      console.log('Token is blacklisted');
-      return false;
-    }
-
-    // Check token whitelist (if defined)
-    if (this.config.whitelistedTokens && decision.params.token) {
-      if (!this.config.whitelistedTokens.includes(decision.params.token)) {
-        console.log('Token is not in whitelist');
-        return false;
-      }
     }
 
     return true;

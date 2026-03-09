@@ -11,7 +11,8 @@
     "build": "tsc -b && vite build",
     "build:cli": "esbuild src/cli/solagent.ts --bundle --platform=node --format=cjs --target=node18 --outfile=dist-cli/solagent.cjs",
     "lint": "eslint .",
-    "test": "npm run lint && npm run build && npm run build:cli",
+    "test:unit": "vitest run",
+    "test": "npm run lint && npm run test:unit && npm run build && npm run build:cli",
     "test:devnet": "node -e \"console.log('Manual devnet validation: run wallet and agent flows against https://api.devnet.solana.com')\"",
     "preview": "vite preview"
   },
@@ -91,5 +92,7 @@
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
     "vite": "^7.2.4"
+    ,
+    "vitest": "^3.2.4"
   }
 }

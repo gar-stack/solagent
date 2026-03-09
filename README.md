@@ -31,6 +31,8 @@ https://superteam.fun/earn/listing/defi-developer-challenge-agentic-wallets-for-
 - Trading and liquidity strategies currently use simulated market data.
 - `executeDecision` currently executes `transfer` and `hold`; other action types are placeholders.
 - CLI is packaged as a local binary at `dist-cli/solagent.cjs` via `npm run build:cli`.
+- CLI default wallet storage supports encrypted-at-rest config via `SOLAGENT_MASTER_PASSWORD`.
+- Initial unit tests are available for policy and CLI auth verification.
 
 ## Quick Start
 
@@ -45,6 +47,7 @@ npm run dev
 
 ```bash
 npm run lint
+npm run test:unit
 npm run build
 npm run build:cli
 npm test
