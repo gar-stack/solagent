@@ -1,171 +1,89 @@
 # Getting Started with SolAgent
 
-This guide will help you get started with SolAgent, the agentic wallet toolkit for AI agents on Solana.
-
 ## Prerequisites
 
-- Node.js 18+ installed
-- Basic knowledge of TypeScript/JavaScript
-- Understanding of Solana blockchain concepts
+- Node.js 18+
+- npm
+- Basic TypeScript and Solana familiarity
 
-## Installation
-
-### Option 1: Clone the Repository
+## Install
 
 ```bash
-git clone https://github.com/superteamng/solagent.git
+git clone https://github.com/gar-stack/solagent.git
 cd solagent
 npm install
 ```
 
-### Option 2: Use as a Dependency
+## Run Dashboard
 
 ```bash
-npm install solagent
+npm run dev
 ```
 
-## Quick Start
+## Validate Project
 
-### 1. Create a Wallet
-
-```typescript
-import { AgenticWallet } from 'solagent';
-
-// Create a new wallet on devnet
-const wallet = AgenticWallet.generate({
-  network: 'devnet',
-  commitment: 'confirmed'
-});
-
-console.log('Address:', wallet.getAddress());
-console.log('Private Key:', wallet.getPrivateKey()); // Save this securely!
+```bash
+npm run lint
+npm run build
+npm run build:cli
+npm test
 ```
 
-### 2. Fund Your Wallet (Devnet)
+## Run CLI Binary
 
-```typescript
-// Request SOL airdrop (devnet only)
-const signature = await wallet.requestAirdrop(2);
-console.log('Airdrop signature:', signature);
-
-// Check balance
-const balance = await wallet.getSolBalance();
-console.log('Balance:', balance, 'SOL');
+```bash
+npm run build:cli
+node dist-cli/solagent.cjs --help
 ```
 
-### 3. Transfer SOL
+## Create a Wallet (SDK)
 
-```typescript
-// Transfer SOL to another address
-const recipient = ' recipient_address_here';
-const amount = 0.5; // SOL
+```ts
+import { AgenticWallet } from './src/sdk';
 
-const txSignature = await wallet.transferSol(recipient, amount);
-console.log('Transaction:', txSignature);
+const wallet = AgenticWallet.generate({ network: 'devnet' });
+console.log(wallet.getAddress());
 ```
 
-### 4. Create an AI Trading Agent
+## Fund Wallet (Devnet)
 
-```typescript
-import { TradingBot } from 'solagent';
+```ts
+await wallet.requestAirdrop(1);
+console.log(await wallet.getSolBalance());
+```
+
+## Transfer SOL
+
+```ts
+await wallet.transferSol('<recipient_pubkey>', 0.1);
+```
+
+## Start an Agent
+
+```ts
+import { TradingBot } from './src/agents/TradingBot';
 
 const bot = new TradingBot(wallet, {
-  name: 'My Trading Bot',
-  description: 'RSI-based trading strategy',
+  name: 'Alpha Trader',
+  description: 'Prototype RSI bot',
   riskLevel: 'moderate',
-  maxTransactionAmount: 1.0,
-  cooldownPeriod: 300000, // 5 minutes
-  allowedActions: ['transfer', 'swap', 'hold'],
-  blacklistedTokens: []
+  maxTransactionAmount: 1,
+  cooldownPeriod: 300000,
+  allowedActions: ['transfer', 'hold'],
+  blacklistedTokens: [],
 }, {
-  buyThreshold: -2,     // Buy when price drops 2%
-  sellThreshold: 5,     // Sell when price rises 5%
-  stopLoss: 3,          // 3% stop loss
-  takeProfit: 10,       // 10% take profit
-  maxPositionSize: 0.5  // Max 0.5 SOL per trade
+  buyThreshold: -2,
+  sellThreshold: 5,
+  stopLoss: 3,
+  takeProfit: 10,
+  maxPositionSize: 0.5,
 });
 
-// Start the bot
-await bot.start(60000); // Check every minute
-
-// Stop the bot
-bot.stop();
+await bot.start(60000);
 ```
 
-## Using the CLI
+## Notes
 
-SolAgent includes a command-line interface for easy management:
-
-### Create a Wallet
-
-```bash
-npx solagent wallet:create --network devnet --save
-```
-
-### Check Balance
-
-```bash
-npx solagent wallet:balance
-```
-
-### Request Airdrop
-
-```bash
-npx solagent wallet:airdrop --amount 2
-```
-
-### Start Trading Bot
-
-```bash
-npx solagent agent:trading --name "Alpha Trader" --risk moderate
-```
-
-### Start Liquidity Provider
-
-```bash
-npx solagent agent:liquidity --min-apy 5
-```
-
-## Configuration
-
-Create a `.solagent.json` file in your project root:
-
-```json
-{
-  "network": "devnet",
-  "rpcUrl": "https://api.devnet.solana.com",
-  "defaultWallet": "your_private_key_here"
-}
-```
-
-## Next Steps
-
-- Read the [API Reference](API_REFERENCE.md) for detailed documentation
-- Learn about [Security Best Practices](SECURITY.md)
-- Explore [Agent Development](AGENTS.md) to build custom agents
-- Check out the [SKILLS.md](../SKILLS.md) for AI agent instructions
-
-## Troubleshooting
-
-### Common Issues
-
-**Error: "Airdrop is only available on devnet or testnet"**
-- Make sure you're using `network: 'devnet'` or `network: 'testnet'`
-
-**Error: "Insufficient funds"**
-- Request an airdrop first or fund your wallet with devnet SOL
-
-**Error: "Invalid private key"**
-- Ensure the private key is base58 encoded
-- Check that the key is complete (88 characters)
-
-### Getting Help
-
-## Examples
-
-See the `examples/` directory for more complete examples:
-
-- `basic-wallet.ts` - Basic wallet operations
-- `trading-bot.ts` - Complete trading bot setup
-- `liquidity-provider.ts` - Liquidity provision example
-- `multi-agent.ts` - Managing multiple agents
+- Trading and LP bots currently use simulated market data.
+- Dashboard fetches live devnet balances, signatures, and slot/block-height data.
+- CLI is packaged locally through `npm run build:cli`.
