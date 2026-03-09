@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 
 export function Footer() {
-  const appUrl = import.meta.env.VITE_APP_URL as string | undefined;
+  const appUrl = (import.meta.env.VITE_APP_URL as string | undefined) || 'https://solagenticwallet.vercel.app/';
   return (
     <footer className="bg-slate-950 border-t border-slate-800">
       <div className="container mx-auto px-4 py-12">
@@ -115,7 +115,7 @@ export function Footer() {
               </li>
               <li>
                 <a 
-                  href={appUrl || 'https://vercel.com/new'}
+                  href={appUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-slate-400 hover:text-white transition-colors inline-flex items-center"
@@ -156,7 +156,7 @@ export function Footer() {
             © 2026 SolAgent. Built with <Heart className="w-4 h-4 inline text-red-500" /> for Superteam Nigeria.
           </p>
           <p className="text-slate-600 text-sm">
-            Open source under MIT License{appUrl ? ` • ${appUrl}` : ' • set VITE_APP_URL in Vercel project settings'}
+            Open source under MIT License • {appUrl}
           </p>
         </div>
       </div>

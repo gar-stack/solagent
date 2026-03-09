@@ -37,7 +37,7 @@ npm run dev
 VITE_SOLANA_RPC_URL=https://api.devnet.solana.com
 VITE_OPERATOR_WALLETS=<comma-separated-wallets>
 VITE_ADMIN_WALLETS=<comma-separated-wallets>
-VITE_APP_URL=https://your-project.vercel.app
+VITE_APP_URL=https://solagenticwallet.vercel.app/
 ```
 
 ## CLI Guide (Short)
@@ -78,7 +78,7 @@ npm run build:cli
 
 ## Links
 
-- [Live App (set via `VITE_APP_URL` in UI)](https://vercel.com/new)
+- [Live App](https://solagenticwallet.vercel.app/)
 - [Deployment Guide](docs/DEPLOYMENT.md)
 - [Deep Dive](docs/DEEP_DIVE.md)
 - [Security Guide](docs/SECURITY.md)

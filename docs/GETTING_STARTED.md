@@ -26,7 +26,7 @@ Optional `.env` role mapping for dashboard RBAC and deployment metadata:
 VITE_SOLANA_RPC_URL=https://api.devnet.solana.com
 VITE_OPERATOR_WALLETS=<comma-separated-wallets>
 VITE_ADMIN_WALLETS=<comma-separated-wallets>
-VITE_APP_URL=https://your-project.vercel.app
+VITE_APP_URL=https://solagenticwallet.vercel.app/
 ```
 
 Web note:

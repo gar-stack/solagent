@@ -13,7 +13,7 @@ Set these in Vercel project settings:
 - `VITE_SOLANA_RPC_URL` (example: `https://api.devnet.solana.com`)
 - `VITE_OPERATOR_WALLETS` (comma-separated wallet addresses)
 - `VITE_ADMIN_WALLETS` (comma-separated wallet addresses)
-- `VITE_APP_URL` (your production domain, e.g. `https://your-project.vercel.app`)
+- `VITE_APP_URL` (your production domain, e.g. `https://solagenticwallet.vercel.app/`)
 
 ## Deployment Flow
 
