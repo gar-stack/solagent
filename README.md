@@ -97,6 +97,51 @@ solagent audit:tail --limit 20
 solagent audit:verify
 ```
 
+## Judge Demo Script
+
+Use this sequence for a live CLI demo on devnet.
+
+```bash
+# 1) Build and set wallet encryption password
+npm run build:cli
+export SOLAGENT_MASTER_PASSWORD='replace-with-strong-passphrase'
+
+# 2) Create and save default wallet
+node dist-cli/solagent.cjs wallet:create --network devnet --save
+node dist-cli/solagent.cjs wallet:balance
+
+# 3) Fund wallet (if RPC airdrop rate-limits, use https://faucet.solana.com/)
+node dist-cli/solagent.cjs wallet:airdrop --amount 0.2
+node dist-cli/solagent.cjs wallet:balance
+
+# 4) Apply signed execution policy
+cat > /tmp/policy.json <<'EOF'
+{
+  "minConfidence": 0.6,
+  "allowedActions": ["transfer", "hold"],
+  "maxAmountByAction": { "transfer": 0.2 },
+  "blockedRecipients": []
+}
+EOF
+node dist-cli/solagent.cjs policy:apply --file /tmp/policy.json
+node dist-cli/solagent.cjs policy:show
+
+# 5) Control-plane kill switch checks
+node dist-cli/solagent.cjs control:status
+node dist-cli/solagent.cjs control:pause --reason "demo pause"
+node dist-cli/solagent.cjs control:resume
+
+# 6) Audit integrity checks
+node dist-cli/solagent.cjs audit:tail --limit 20
+node dist-cli/solagent.cjs audit:verify
+```
+
+Expected demo outcomes:
+- policy version increments and shows as active
+- control plane toggles paused/resumed state
+- audit log records policy/control events
+- audit chain verification returns valid
+
 ## SDK Example
 
 ```ts
