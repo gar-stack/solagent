@@ -232,12 +232,6 @@ Before deploying to production:
 - [ ] Enable comprehensive logging
 - [ ] Document all configurations
 
-## Security Contacts
-
-Report security vulnerabilities to:
-- GitHub Security Advisories: https://github.com/superteamng/solagent/security
-- Email: security@superteam.ng
-
 ---
 
 **Remember**: Security is an ongoing process. Regularly review and update your security practices.
