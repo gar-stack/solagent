@@ -1,0 +1,5 @@
+{
+  "network": "devnet",
+  "rpcUrl": "https://api.devnet.solana.com",
+  "defaultWallet": "your_private_key_here"
+}

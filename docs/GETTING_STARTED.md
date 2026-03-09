@@ -161,9 +161,6 @@ Create a `.solagent.json` file in your project root:
 
 ### Getting Help
 
-- GitHub Issues: https://github.com/superteamng/solagent/issues
-- Telegram: https://t.me/superteamng
-
 ## Examples
 
 See the `examples/` directory for more complete examples:
