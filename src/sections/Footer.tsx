@@ -24,7 +24,7 @@ export function Footer() {
                 variant="outline" 
                 size="icon" 
                 className="border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800"
-                onClick={() => window.open('https://github.com/superteamng/solagent', '_blank')}
+                onClick={() => window.open('https://github.com/gar-stack/solagent', '_blank')}
               >
                 <Github className="w-5 h-5" />
               </Button>
@@ -77,7 +77,7 @@ export function Footer() {
               </li>
               <li>
                 <a 
-                  href="https://github.com/superteamng/solagent/blob/main/SKILLS.md" 
+                  href="https://github.com/gar-stack/solagent/blob/main/SKILLS.md" 
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-slate-400 hover:text-white transition-colors inline-flex items-center"

@@ -20,6 +20,9 @@ import {
   XCircle,
   Loader2,
   Wifi,
+  Link2,
+  RefreshCw,
+  LogOut,
 } from 'lucide-react';
 
 interface AgentStatus {
@@ -68,6 +71,22 @@ interface RpcBalanceResult {
   value: number;
 }
 
+interface SolanaProvider {
+  isPhantom?: boolean;
+  isConnected?: boolean;
+  publicKey?: { toString(): string };
+  connect: (options?: { onlyIfTrusted?: boolean }) => Promise<{ publicKey: { toString(): string } }>;
+  disconnect: () => Promise<void>;
+  on?: (event: 'accountChanged', handler: (publicKey: { toString(): string } | null) => void) => void;
+  off?: (event: 'accountChanged', handler: (publicKey: { toString(): string } | null) => void) => void;
+}
+
+declare global {
+  interface Window {
+    solana?: SolanaProvider;
+  }
+}
+
 const DEVNET_RPC_URL = import.meta.env.VITE_SOLANA_RPC_URL || 'https://api.devnet.solana.com';
 const DEVNET_FALLBACK_ADDRESS = '11111111111111111111111111111111';
 const LAMPORTS_PER_SOL = 1_000_000_000;
@@ -111,33 +130,72 @@ const AGENT_BASE: AgentStatus[] = [
   },
 ];
 
+async function rpcCall<T>(method: string, params: unknown[] = []): Promise<T> {
+  const response = await fetch(DEVNET_RPC_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method,
+      params,
+    }),
+  });
+
+  const json = (await response.json()) as RpcResponse<T>;
+  if (json.error) {
+    throw new Error(json.error.message);
+  }
+  return json.result;
+}
+
 export function Dashboard() {
   const [agents, setAgents] = useState<AgentStatus[]>(AGENT_BASE);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [devnetStats, setDevnetStats] = useState<DevnetStats | null>(null);
+  const [connectedWallet, setConnectedWallet] = useState<string | null>(null);
+  const [connectedWalletBalance, setConnectedWalletBalance] = useState<number | null>(null);
+  const [isWalletConnecting, setIsWalletConnecting] = useState<boolean>(false);
+
+  const refreshConnectedWalletBalance = async (address: string) => {
+    const balance = await rpcCall<RpcBalanceResult>('getBalance', [address, { commitment: 'confirmed' }]);
+    setConnectedWalletBalance(balance.value / LAMPORTS_PER_SOL);
+  };
+
+  const connectWallet = async () => {
+    if (!window.solana?.isPhantom) {
+      toast.error('Phantom wallet not detected');
+      return;
+    }
+
+    setIsWalletConnecting(true);
+    try {
+      const result = await window.solana.connect();
+      const address = result.publicKey.toString();
+      setConnectedWallet(address);
+      await refreshConnectedWalletBalance(address);
+      toast.success('Wallet connected');
+    } catch (error) {
+      toast.error(`Wallet connection failed: ${error instanceof Error ? error.message : 'unknown error'}`);
+    } finally {
+      setIsWalletConnecting(false);
+    }
+  };
+
+  const disconnectWallet = async () => {
+    try {
+      await window.solana?.disconnect();
+      setConnectedWallet(null);
+      setConnectedWalletBalance(null);
+      toast.info('Wallet disconnected');
+    } catch (error) {
+      toast.error(`Disconnect failed: ${error instanceof Error ? error.message : 'unknown error'}`);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
-
-    const rpcCall = async <T,>(method: string, params: unknown[] = []): Promise<T> => {
-      const response = await fetch(DEVNET_RPC_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          id: 1,
-          method,
-          params,
-        }),
-      });
-
-      const json = (await response.json()) as RpcResponse<T>;
-      if (json.error) {
-        throw new Error(json.error.message);
-      }
-      return json.result;
-    };
 
     const loadDevnetData = async () => {
       try {
@@ -199,7 +257,10 @@ export function Dashboard() {
             signature: `${entry.sig.signature.slice(0, 6)}...${entry.sig.signature.slice(-6)}`,
           }));
 
-        const [slot, blockHeight] = await Promise.all([rpcCall<number>('getSlot', [{ commitment: 'confirmed' }]), rpcCall<number>('getBlockHeight', [{ commitment: 'confirmed' }])]);
+        const [slot, blockHeight] = await Promise.all([
+          rpcCall<number>('getSlot', [{ commitment: 'confirmed' }]),
+          rpcCall<number>('getBlockHeight', [{ commitment: 'confirmed' }]),
+        ]);
 
         const avgBalance = hydratedAgents.reduce((acc, a) => acc + a.balance, 0) / hydratedAgents.length;
 
@@ -229,6 +290,35 @@ export function Dashboard() {
     return () => {
       isMounted = false;
       window.clearInterval(pollId);
+    };
+  }, []);
+
+  useEffect(() => {
+    const provider = window.solana;
+    if (!provider) return;
+
+    const handleAccountChanged = (publicKey: { toString(): string } | null) => {
+      if (!publicKey) {
+        setConnectedWallet(null);
+        setConnectedWalletBalance(null);
+        return;
+      }
+
+      const address = publicKey.toString();
+      setConnectedWallet(address);
+      void refreshConnectedWalletBalance(address);
+    };
+
+    provider.on?.('accountChanged', handleAccountChanged);
+
+    if (provider.isConnected && provider.publicKey) {
+      const address = provider.publicKey.toString();
+      setConnectedWallet(address);
+      void refreshConnectedWalletBalance(address);
+    }
+
+    return () => {
+      provider.off?.('accountChanged', handleAccountChanged);
     };
   }, []);
 
@@ -265,15 +355,60 @@ export function Dashboard() {
   const runningAgents = agents.filter((a) => a.status === 'running').length;
 
   return (
-    <section id="dashboard" className="py-20 bg-slate-950">
-      <div className="container mx-auto px-4">
-        <div className="mb-10">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Agent Dashboard</h2>
-          <p className="text-slate-400">Live devnet balances and network activity (auto-refresh every 60s)</p>
+    <section id="dashboard" className="py-16 sm:py-20 bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900">
+      <div className="container mx-auto px-4 sm:px-6">
+        <div className="mb-10 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Agent Dashboard</h2>
+            <p className="text-slate-400">Live devnet balances and network activity (auto-refresh every 60s)</p>
+          </div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-300">
+            <Wifi className="h-3.5 w-3.5" />
+            Connected to Solana Devnet
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-slate-900 border-slate-800">
+        <Card className="mb-8 border-slate-800 bg-gradient-to-r from-slate-900/90 to-slate-800/80 backdrop-blur">
+          <CardContent className="pt-6">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-sm text-slate-400">Personal Wallet</p>
+                <p className="text-lg font-semibold text-white">
+                  {connectedWallet ? `${connectedWallet.slice(0, 8)}...${connectedWallet.slice(-6)}` : 'Not connected'}
+                </p>
+                <p className="text-sm text-slate-400">
+                  {connectedWalletBalance !== null ? `${connectedWalletBalance.toFixed(4)} SOL` : 'Connect Phantom to view balance'}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {connectedWallet ? (
+                  <>
+                    <Button
+                      variant="secondary"
+                      className="bg-slate-700 text-slate-100 hover:bg-slate-600"
+                      onClick={() => void refreshConnectedWalletBalance(connectedWallet)}
+                    >
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Refresh
+                    </Button>
+                    <Button variant="destructive" onClick={() => void disconnectWallet()}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Disconnect
+                    </Button>
+                  </>
+                ) : (
+                  <Button className="bg-cyan-600 text-white hover:bg-cyan-500" onClick={() => void connectWallet()} disabled={isWalletConnecting}>
+                    {isWalletConnecting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Link2 className="mr-2 h-4 w-4" />}
+                    Connect Phantom
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6 mb-8">
+          <Card className="bg-slate-900/90 border-slate-800">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -287,7 +422,7 @@ export function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card className="bg-slate-900 border-slate-800">
+          <Card className="bg-slate-900/90 border-slate-800">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -304,7 +439,7 @@ export function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card className="bg-slate-900 border-slate-800">
+          <Card className="bg-slate-900/90 border-slate-800">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -320,7 +455,7 @@ export function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card className="bg-slate-900 border-slate-800">
+          <Card className="bg-slate-900/90 border-slate-800">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -336,7 +471,7 @@ export function Dashboard() {
         </div>
 
         <Tabs defaultValue="agents" className="w-full">
-          <TabsList className="bg-slate-900 border-slate-800 mb-6">
+          <TabsList className="mb-6 flex w-full overflow-x-auto bg-slate-900 border-slate-800">
             <TabsTrigger value="agents" className="data-[state=active]:bg-slate-800">
               <Bot className="w-4 h-4 mr-2" />
               Agents

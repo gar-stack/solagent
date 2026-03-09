@@ -54,7 +54,7 @@ const installationSteps = [
   },
   {
     title: 'Clone Repository',
-    command: 'git clone https://github.com/superteamng/solagent.git',
+    command: 'git clone https://github.com/gar-stack/solagent.git',
     description: 'Clone the source code for development',
   },
 ];
@@ -82,7 +82,7 @@ console.log('Balance:', balance, 'SOL');`;
 export function Documentation() {
   return (
     <section id="documentation" className="py-20 bg-slate-900">
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto px-4 sm:px-6">
         <div className="text-center mb-16">
           <Badge className="mb-4 px-4 py-2 bg-blue-500/20 text-blue-300 border-blue-500/30">
             Documentation
@@ -97,11 +97,11 @@ export function Documentation() {
         </div>
 
         {/* Doc Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-16">
           {docs.map((doc, index) => (
             <Card 
               key={index} 
-              className="bg-slate-950 border-slate-800 hover:border-slate-700 transition-colors cursor-pointer group"
+              className="bg-slate-950 border-slate-800 hover:border-cyan-600/50 transition-colors cursor-pointer group"
             >
               <CardHeader className="pb-3">
                 <div className="w-12 h-12 rounded-lg bg-slate-800 flex items-center justify-center mb-3 group-hover:bg-slate-700 transition-colors">
@@ -124,9 +124,9 @@ export function Documentation() {
         {/* Quick Start */}
         <div className="max-w-4xl mx-auto">
           <Tabs defaultValue="npm" className="w-full">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
               <h3 className="text-2xl font-bold text-white">Quick Start</h3>
-              <TabsList className="bg-slate-950 border-slate-800">
+              <TabsList className="bg-slate-950 border-slate-800 w-full sm:w-auto overflow-x-auto">
                 <TabsTrigger value="npm" className="data-[state=active]:bg-slate-800">
                   <Package className="w-4 h-4 mr-2" />
                   npm
@@ -209,7 +209,7 @@ export function Documentation() {
               size="lg" 
               variant="outline" 
               className="border-slate-700 text-slate-300 hover:bg-slate-800"
-              onClick={() => window.open('https://github.com/superteamng/solagent', '_blank')}
+              onClick={() => window.open('https://github.com/gar-stack/solagent', '_blank')}
             >
               <Github className="w-5 h-5 mr-2" />
               View on GitHub
