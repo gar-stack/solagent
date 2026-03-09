@@ -51,4 +51,23 @@ describe('policy lifecycle', () => {
     registry.rollback(1);
     expect(registry.getActiveEntry()?.document.version).toBe(1);
   });
+
+  it('handles explicit undefined optional fields in policy document', () => {
+    const signer = Keypair.generate();
+    const signed = signPolicyDocument(
+      {
+        version: 1,
+        createdAt: new Date().toISOString(),
+        previousVersion: undefined,
+        description: undefined,
+        policy: { minConfidence: 0.6 },
+      },
+      bs58.encode(signer.secretKey)
+    );
+
+    const verified = verifySignedPolicyDocument(signed);
+    expect(verified.version).toBe(1);
+    expect(verified.description).toBeUndefined();
+    expect(verified.previousVersion).toBeUndefined();
+  });
 });

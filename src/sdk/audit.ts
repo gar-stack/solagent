@@ -34,18 +34,30 @@ export interface AuditSink {
 
 const GENESIS_HASH = 'GENESIS';
 
-function stableStringify(value: unknown): string {
-  if (value === null || typeof value !== 'object') {
-    return JSON.stringify(value);
-  }
-
+function canonicalize(value: unknown): unknown {
   if (Array.isArray(value)) {
-    return `[${value.map((item) => stableStringify(item)).join(',')}]`;
+    return value.map((item) => (typeof item === 'undefined' ? null : canonicalize(item)));
   }
 
-  const objectValue = value as Record<string, unknown>;
-  const keys = Object.keys(objectValue).sort();
-  return `{${keys.map((key) => `${JSON.stringify(key)}:${stableStringify(objectValue[key])}`).join(',')}}`;
+  if (value && typeof value === 'object') {
+    const objectValue = value as Record<string, unknown>;
+    const result: Record<string, unknown> = {};
+    Object.keys(objectValue)
+      .sort()
+      .forEach((key) => {
+        const item = objectValue[key];
+        if (typeof item !== 'undefined') {
+          result[key] = canonicalize(item);
+        }
+      });
+    return result;
+  }
+
+  return value;
+}
+
+function stableStringify(value: unknown): string {
+  return JSON.stringify(canonicalize(value));
 }
 
 function hashRecordPayload(payload: unknown): string {
