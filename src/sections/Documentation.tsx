@@ -11,7 +11,10 @@ import {
   Terminal,
   Package,
   Shield,
-  Cpu
+  Cpu,
+  ListChecks,
+  Layers3,
+  Rocket
 } from 'lucide-react';
 
 const docs = [
@@ -77,14 +80,17 @@ await wallet.requestAirdrop(2);
 
 # Check balance
 const balance = await wallet.getSolBalance();
-console.log('Balance:', balance, 'SOL');`;
+console.log('Balance:', balance, 'SOL');
+
+# Optional: authorize dashboard from CLI
+solagent auth:code --ttl 900`;
 
 export function Documentation() {
   return (
     <section id="documentation" className="py-20 bg-slate-900">
       <div className="container mx-auto px-4 sm:px-6">
         <div className="text-center mb-16">
-          <Badge className="mb-4 px-4 py-2 bg-blue-500/20 text-blue-300 border-blue-500/30">
+          <Badge className="mb-4 px-4 py-2 bg-cyan-500/20 text-cyan-300 border-cyan-500/30">
             Documentation
           </Badge>
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
@@ -113,7 +119,7 @@ export function Documentation() {
                 <p className="text-slate-400 text-sm mb-4">
                   {doc.description}
                 </p>
-                <Button variant="link" className="p-0 h-auto text-blue-400 hover:text-blue-300">
+                <Button variant="link" className="p-0 h-auto text-cyan-400 hover:text-cyan-300">
                   Read More <ExternalLink className="w-4 h-4 ml-1" />
                 </Button>
               </CardContent>
@@ -189,7 +195,7 @@ export function Documentation() {
                           <span className="text-slate-500">{line}</span>
                         ) : line.startsWith('import') || line.startsWith('const') || line.startsWith('await') ? (
                           <>
-                            <span className="text-purple-400">{line.split(' ')[0]} </span>
+                            <span className="text-cyan-400">{line.split(' ')[0]} </span>
                             <span className="text-slate-300">{line.substring(line.indexOf(' ') + 1)}</span>
                           </>
                         ) : (
@@ -202,6 +208,51 @@ export function Documentation() {
               </pre>
             </CardContent>
           </Card>
+
+          <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card className="bg-slate-950 border-slate-800">
+              <CardHeader>
+                <div className="flex items-center gap-2 text-cyan-300">
+                  <Layers3 className="w-4 h-4" />
+                  <CardTitle className="text-white text-lg">Architecture</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="text-sm text-slate-300 space-y-2">
+                <p>1. SDK layer handles wallets, signing, and transaction execution.</p>
+                <p>2. Agent layer evaluates market data and emits constrained decisions.</p>
+                <p>3. Dashboard layer provides monitoring, access control, and operational visibility.</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-slate-950 border-slate-800">
+              <CardHeader>
+                <div className="flex items-center gap-2 text-emerald-300">
+                  <ListChecks className="w-4 h-4" />
+                  <CardTitle className="text-white text-lg">Operations Playbook</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="text-sm text-slate-300 space-y-2">
+                <p>1. Create/fund wallet on devnet.</p>
+                <p>2. Configure policy limits and allowed actions.</p>
+                <p>3. Authorize dashboard with master wallet or CLI access code.</p>
+                <p>4. Monitor health, logs, and balances before any promotion.</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-slate-950 border-slate-800">
+              <CardHeader>
+                <div className="flex items-center gap-2 text-amber-300">
+                  <Rocket className="w-4 h-4" />
+                  <CardTitle className="text-white text-lg">Production Notes</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="text-sm text-slate-300 space-y-2">
+                <p>Use dedicated secret management and avoid plaintext local key storage.</p>
+                <p>Integrate real market data providers and complete unimplemented action executors.</p>
+                <p>Add CI tests for strategy, security guardrails, and end-to-end flows.</p>
+              </CardContent>
+            </Card>
+          </div>
 
           {/* GitHub Link */}
           <div className="mt-8 text-center">

@@ -26,12 +26,12 @@ export function Hero() {
   };
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-slate-950 via-cyan-950 to-emerald-950">
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-purple-500/20 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse delay-1000" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-cyan-500/10 rounded-full blur-3xl" />
+        <div className="absolute top-20 left-10 w-72 h-72 bg-cyan-500/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-emerald-500/20 rounded-full blur-3xl animate-pulse delay-1000" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-amber-500/10 rounded-full blur-3xl" />
       </div>
 
       {/* Grid pattern overlay */}
@@ -50,7 +50,7 @@ export function Hero() {
         <div className="text-center max-w-5xl mx-auto">
           {/* Badge */}
           <div className={`transition-all duration-700 ${isAnimated ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-            <Badge className="mb-6 px-4 py-2 text-sm bg-purple-500/20 text-purple-300 border-purple-500/30">
+            <Badge className="mb-6 px-4 py-2 text-sm bg-cyan-500/20 text-cyan-300 border-cyan-500/30">
               <Zap className="w-4 h-4 mr-2" />
               DeFi Developer Challenge — Superteam Nigeria
             </Badge>
@@ -58,7 +58,7 @@ export function Hero() {
 
           {/* Main Title */}
           <h1 
-            className={`text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-white via-purple-200 to-cyan-200 bg-clip-text text-transparent transition-all duration-700 delay-100 ${isAnimated ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+            className={`text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-white via-cyan-200 to-emerald-200 bg-clip-text text-transparent transition-all duration-700 delay-100 ${isAnimated ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
           >
             SolAgent
           </h1>
@@ -84,7 +84,7 @@ export function Hero() {
           >
             <Button 
               size="lg" 
-              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8"
+              className="bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white px-8"
               onClick={() => scrollToSection('dashboard')}
             >
               <Wallet className="w-5 h-5 mr-2" />
@@ -108,8 +108,8 @@ export function Hero() {
           >
             <Card className="bg-slate-900/60 border-slate-700/50 backdrop-blur-sm">
               <CardHeader className="pb-3">
-                <div className="w-12 h-12 rounded-lg bg-purple-500/20 flex items-center justify-center mb-3">
-                  <Wallet className="w-6 h-6 text-purple-400" />
+                <div className="w-12 h-12 rounded-lg bg-cyan-500/20 flex items-center justify-center mb-3">
+                  <Wallet className="w-6 h-6 text-cyan-400" />
                 </div>
                 <CardTitle className="text-lg text-white">Programmatic Wallets</CardTitle>
               </CardHeader>

@@ -3,8 +3,8 @@ import { Hero } from './sections/Hero';
 import { Dashboard } from './sections/Dashboard';
 import { Features } from './sections/Features';
 import { Documentation } from './sections/Documentation';
+import { DocsPortal } from './sections/DocsPortal';
 import { Footer } from './sections/Footer';
-import './App.css';
 
 function App() {
   return (
@@ -13,6 +13,7 @@ function App() {
       <Dashboard />
       <Features />
       <Documentation />
+      <DocsPortal />
       <Footer />
       <Toaster />
     </div>

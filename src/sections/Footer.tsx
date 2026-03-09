@@ -61,6 +61,14 @@ export function Footer() {
               </li>
               <li>
                 <a 
+                  href="#docs-portal" 
+                  className="text-slate-400 hover:text-white transition-colors"
+                >
+                  Docs Portal
+                </a>
+              </li>
+              <li>
+                <a 
                   href="#features" 
                   className="text-slate-400 hover:text-white transition-colors"
                 >
@@ -123,6 +131,17 @@ export function Footer() {
                   className="text-slate-400 hover:text-white transition-colors inline-flex items-center"
                 >
                   Solana Docs
+                  <ExternalLink className="w-3 h-3 ml-1" />
+                </a>
+              </li>
+              <li>
+                <a 
+                  href="https://github.com/gar-stack/solagent/blob/main/docs/PRODUCTION_TASKS.md" 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-slate-400 hover:text-white transition-colors inline-flex items-center"
+                >
+                  Production Tasks
                   <ExternalLink className="w-3 h-3 ml-1" />
                 </a>
               </li>

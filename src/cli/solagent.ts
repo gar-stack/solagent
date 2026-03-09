@@ -4,6 +4,8 @@ import { Command } from 'commander';
 import { AgenticWallet, TradingBot, LiquidityProvider } from '../sdk';
 import * as fs from 'fs';
 import * as path from 'path';
+import nacl from 'tweetnacl';
+import bs58 from 'bs58';
 
 const program = new Command();
 
@@ -14,6 +16,14 @@ interface Config {
 }
 
 const CONFIG_PATH = path.join(process.cwd(), '.solagent.json');
+
+function toBase64Url(input: string): string {
+  return Buffer.from(input, 'utf-8')
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '');
+}
 
 function loadConfig(): Config {
   if (fs.existsSync(CONFIG_PATH)) {
@@ -288,6 +298,53 @@ program
     const config = loadConfig();
     console.log('⚙️  Current Configuration:');
     console.log(JSON.stringify(config, null, 2));
+  });
+
+program
+  .command('auth:code')
+  .description('Generate a signed dashboard access code from your default CLI wallet')
+  .option('-k, --key <key>', 'Private key (or use default)')
+  .option('-t, --ttl <seconds>', 'Code validity in seconds', '900')
+  .action(async (options) => {
+    try {
+      const config = loadConfig();
+      const privateKey = options.key || config.defaultWallet;
+
+      if (!privateKey) {
+        console.error('❌ No private key provided. Use --key or set a default wallet.');
+        process.exit(1);
+      }
+
+      const wallet = AgenticWallet.fromPrivateKey(privateKey, {
+        network: config.network,
+        rpcUrl: config.rpcUrl,
+      });
+
+      const ttlSeconds = Math.max(60, parseInt(options.ttl, 10) || 900);
+      const now = Math.floor(Date.now() / 1000);
+      const payload = {
+        ver: 1,
+        kind: 'cli-auth',
+        wallet: wallet.getAddress(),
+        network: config.network,
+        iat: now,
+        exp: now + ttlSeconds,
+      };
+
+      const payloadJson = JSON.stringify(payload);
+      const payloadB64 = toBase64Url(payloadJson);
+      const signature = nacl.sign.detached(Buffer.from(payloadB64, 'utf-8'), bs58.decode(privateKey));
+      const signatureB58 = bs58.encode(signature);
+      const code = `${payloadB64}.${signatureB58}`;
+
+      console.log('✅ Dashboard access code generated');
+      console.log(`⏱️  Expires in: ${ttlSeconds} seconds`);
+      console.log('\nPaste this into the dashboard CLI Access field:\n');
+      console.log(code);
+    } catch (error) {
+      console.error(`❌ Failed to generate auth code: ${error instanceof Error ? error.message : 'unknown error'}`);
+      process.exit(1);
+    }
   });
 
 program.parse();
