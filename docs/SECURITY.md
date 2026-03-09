@@ -6,18 +6,21 @@ This document covers current security controls and limitations in SolAgent.
 
 - Local keypair generation using Solana `Keypair.generate()`
 - Local signing for messages and transactions
+- Encrypted-at-rest default CLI wallet storage via `SOLAGENT_MASTER_PASSWORD`
 - Agent-level decision gating:
   - confidence threshold
   - allowed action list
   - max transaction amount
   - cooldown period
   - token blacklist/whitelist
-- Decision and transaction history tracking in memory
+- Signed policy lifecycle (versioned updates + rollback)
+- Append-only audit hash chain with verification support
+- Emergency kill-switch for managed CLI execution paths
 
 ## Known Limitations
 
-- No encrypted key vault implementation in this repo
-- If using CLI config storage, private keys may exist in plaintext `.solagent.json`
+- No external KMS/HSM integration yet (local encryption only)
+- If using legacy config storage, private keys may still exist in plaintext `.solagent.json`
 - No multisig / MPC / HSM integration
 - No hardware-wallet integration
 - No explicit anti-MEV transaction routing
@@ -32,10 +35,9 @@ This document covers current security controls and limitations in SolAgent.
 
 ## Production Hardening Checklist
 
-- [ ] Replace plaintext secret handling with secure key management
-- [ ] Add encrypted-at-rest wallet material handling
-- [ ] Add policy enforcement and approval workflows
+- [ ] Replace local encryption with managed secrets (KMS/HSM)
+- [ ] Add multi-signer policy approvals and operator RBAC
+- [ ] Stream audit records to external immutable storage/SIEM
 - [ ] Add robust monitoring and alerting
-- [ ] Add test coverage for execution and guardrails
-- [ ] Add incident response and emergency stop procedures
-
+- [ ] Expand integration tests for full executor flows
+- [ ] Implement distributed kill-switch propagation for multi-host deployments

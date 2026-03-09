@@ -1,5 +1,8 @@
 import { AgenticWallet, type AgentDecision, type WalletState } from './AgenticWallet';
 import { evaluateDecisionPolicy, type ActionPolicy } from './policy';
+import type { AuditSink } from './audit';
+import type { PolicyRegistry } from './policyLifecycle';
+import type { ExecutionGuard } from './control';
 
 export interface AgentConfig {
   name: string;
@@ -11,6 +14,9 @@ export interface AgentConfig {
   blacklistedTokens: string[];
   whitelistedTokens?: string[];
   policy?: ActionPolicy;
+  policyRegistry?: PolicyRegistry;
+  auditSink?: AuditSink;
+  executionGuard?: ExecutionGuard;
 }
 
 export interface MarketData {
@@ -93,6 +99,7 @@ export abstract class AIAgent {
   // Main execution cycle
   protected async runCycle(): Promise<void> {
     try {
+      this.config.executionGuard?.assertAllowed(`agent:${this.config.name}:runCycle`);
       // Check cooldown
       const now = Date.now();
       if (now - this.lastActionTime < this.config.cooldownPeriod) {
@@ -114,6 +121,19 @@ export abstract class AIAgent {
         decision,
         executed: false,
       });
+      await this.config.auditSink?.write({
+        category: 'execution',
+        action: decision.action,
+        level: 'info',
+        actor: this.wallet.getAddress(),
+        message: 'Agent decision generated',
+        metadata: {
+          agent: this.config.name,
+          confidence: decision.confidence,
+          reason: decision.reason,
+          params: decision.params,
+        },
+      });
 
       // Execute decision if appropriate
       if (this.shouldExecuteDecision(decision)) {
@@ -125,10 +145,32 @@ export abstract class AIAgent {
           this.decisionLog[this.decisionLog.length - 1].signature = signature;
           
           console.log(`Executed ${decision.action}: ${signature}`);
+          await this.config.auditSink?.write({
+            category: 'execution',
+            action: decision.action,
+            level: 'info',
+            actor: this.wallet.getAddress(),
+            message: 'Agent decision executed',
+            metadata: {
+              agent: this.config.name,
+              signature,
+            },
+          });
         }
       }
     } catch (error) {
       console.error(`Error in agent cycle: ${error}`);
+      await this.config.auditSink?.write({
+        category: 'execution',
+        action: 'runCycle',
+        level: 'error',
+        actor: this.wallet.getAddress(),
+        message: 'Agent cycle failed',
+        metadata: {
+          agent: this.config.name,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
     }
   }
 
@@ -151,9 +193,11 @@ export abstract class AIAgent {
 
     const mergedPolicy: ActionPolicy = {
       ...basePolicy,
+      ...(this.config.policyRegistry?.getActivePolicy() ?? {}),
       ...this.config.policy,
       maxAmountByAction: {
         ...basePolicy.maxAmountByAction,
+        ...this.config.policyRegistry?.getActivePolicy()?.maxAmountByAction,
         ...this.config.policy?.maxAmountByAction,
       },
     };

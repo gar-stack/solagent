@@ -8,6 +8,9 @@ Complete API documentation for the SolAgent SDK.
 - [AIAgent](#aiagent)
 - [TradingBot](#tradingbot)
 - [LiquidityProvider](#liquidityprovider)
+- [Policy Registry](#policy-registry)
+- [Audit](#audit)
+- [Execution Guard](#execution-guard)
 
 ---
 
@@ -315,6 +318,64 @@ interface LPStrategy {
 ```
 
 ### Methods
+
+---
+
+## Policy Registry
+
+```typescript
+class PolicyRegistry {
+  apply(signedDocument: SignedPolicyDocument): PolicyHistoryEntry;
+  rollback(version: number): PolicyHistoryEntry;
+  getActivePolicy(): ActionPolicy | null;
+  getHistory(): PolicyHistoryEntry[];
+}
+```
+
+Helpers:
+
+```typescript
+signPolicyDocument(document: PolicyDocument, privateKeyBase58: string): SignedPolicyDocument
+verifySignedPolicyDocument(document: SignedPolicyDocument): PolicyDocument
+```
+
+---
+
+## Audit
+
+```typescript
+interface AuditSink {
+  write(event: AuditEvent): Promise<AuditRecord>;
+  list(limit?: number): Promise<AuditRecord[]>;
+}
+```
+
+Default in-memory implementation:
+
+```typescript
+class InMemoryAuditSink implements AuditSink {}
+verifyAuditChain(records: AuditRecord[]): boolean
+```
+
+---
+
+## Execution Guard
+
+```typescript
+interface ExecutionGuard {
+  assertAllowed(context: string): void;
+  getState(): ExecutionGuardState;
+}
+```
+
+Default implementation:
+
+```typescript
+class InMemoryExecutionGuard implements ExecutionGuard {
+  pause(reason?: string): void;
+  resume(): void;
+}
+```
 
 #### getPools()
 

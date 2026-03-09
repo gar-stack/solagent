@@ -6,6 +6,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto';
 import { createCliAuthCode, type CliAuthPayload } from '../lib/cliAuth';
+import { FileExecutionGuard, getControlPlanePath } from './controlPlane';
+import { FileAuditSink, getAuditFilePath } from './auditFileSink';
+import { FilePolicyRegistry, getPolicyFilePath } from './policyStore';
+import type { PolicyDocument } from '../sdk/policyLifecycle';
+import type { ActionPolicy } from '../sdk/policy';
 
 const program = new Command();
 
@@ -17,6 +22,9 @@ interface Config {
 }
 
 const CONFIG_PATH = path.join(process.cwd(), '.solagent.json');
+const executionGuard = new FileExecutionGuard();
+const auditSink = new FileAuditSink();
+const policyRegistry = new FilePolicyRegistry();
 
 function encryptSecret(secret: string, passphrase: string): string {
   const iv = randomBytes(12);
@@ -83,6 +91,15 @@ function saveConfig(config: Config): void {
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
 }
 
+function createManagedWallet(privateKey: string, config: Config): AgenticWallet {
+  return AgenticWallet.fromPrivateKey(privateKey, {
+    network: config.network,
+    rpcUrl: config.rpcUrl,
+    auditSink,
+    executionGuard,
+  });
+}
+
 program
   .name('solagent')
   .description('SolAgent CLI - Manage AI agent wallets on Solana')
@@ -139,6 +156,9 @@ program
 
     const wallet = AgenticWallet.fromPrivateKey(privateKey, {
       network: config.network,
+      rpcUrl: config.rpcUrl,
+      auditSink,
+      executionGuard,
     });
 
     console.log(`📍 Address: ${wallet.getAddress()}`);
@@ -175,9 +195,7 @@ program
       process.exit(1);
     }
 
-    const wallet = AgenticWallet.fromPrivateKey(privateKey, {
-      network: config.network,
-    });
+    const wallet = createManagedWallet(privateKey, config);
 
     console.log(`📍 Address: ${wallet.getAddress()}`);
     console.log(`⏳ Requesting ${options.amount} SOL airdrop...`);
@@ -206,9 +224,7 @@ program
       process.exit(1);
     }
 
-    const wallet = AgenticWallet.fromPrivateKey(privateKey, {
-      network: config.network,
-    });
+    const wallet = createManagedWallet(privateKey, config);
 
     console.log(`📍 From: ${wallet.getAddress()}`);
     console.log(`📍 To: ${options.to}`);
@@ -241,9 +257,7 @@ program
       process.exit(1);
     }
 
-    const wallet = AgenticWallet.fromPrivateKey(privateKey, {
-      network: config.network,
-    });
+    const wallet = createManagedWallet(privateKey, config);
 
     const bot = new TradingBot(
       wallet,
@@ -255,6 +269,9 @@ program
         cooldownPeriod: 300000,
         allowedActions: ['transfer', 'swap', 'hold'],
         blacklistedTokens: [],
+        policy: policyRegistry.getActivePolicy() ?? undefined,
+        auditSink,
+        executionGuard,
       },
       {
         buyThreshold: -2,
@@ -290,9 +307,7 @@ program
       process.exit(1);
     }
 
-    const wallet = AgenticWallet.fromPrivateKey(privateKey, {
-      network: config.network,
-    });
+    const wallet = createManagedWallet(privateKey, config);
 
     const lp = new LiquidityProvider(
       wallet,
@@ -304,6 +319,9 @@ program
         cooldownPeriod: 600000,
         allowedActions: ['provide_liquidity', 'remove_liquidity', 'hold'],
         blacklistedTokens: [],
+        policy: policyRegistry.getActivePolicy() ?? undefined,
+        auditSink,
+        executionGuard,
       },
       {
         minApy: parseFloat(options.minApy),
@@ -372,6 +390,8 @@ program
       const wallet = AgenticWallet.fromPrivateKey(privateKey, {
         network: config.network,
         rpcUrl: config.rpcUrl,
+        auditSink,
+        executionGuard,
       });
 
       const ttlSeconds = Math.max(60, parseInt(options.ttl, 10) || 900);
@@ -389,12 +409,165 @@ program
 
       console.log('✅ Dashboard access code generated');
       console.log(`⏱️  Expires in: ${ttlSeconds} seconds`);
-      console.log('\nPaste this into the dashboard CLI Access field:\n');
+      console.log('\nUse this code with any client flow that verifies CLI auth tokens:\n');
       console.log(code);
     } catch (error) {
       console.error(`❌ Failed to generate auth code: ${error instanceof Error ? error.message : 'unknown error'}`);
       process.exit(1);
     }
+  });
+
+program
+  .command('control:status')
+  .description('Show global execution kill-switch status')
+  .action(() => {
+    const state = executionGuard.getState();
+    console.log('🛡️ Control Plane');
+    console.log(`File: ${getControlPlanePath()}`);
+    console.log(JSON.stringify(state, null, 2));
+  });
+
+program
+  .command('control:pause')
+  .description('Enable emergency kill-switch for all managed execution paths')
+  .option('-r, --reason <reason>', 'Reason for pause', 'Manual emergency pause')
+  .action((options) => {
+    const state = executionGuard.pause(options.reason);
+    void auditSink.write({
+      category: 'control-plane',
+      action: 'pause',
+      level: 'warn',
+      message: 'Execution paused by operator',
+      metadata: { reason: options.reason },
+    });
+    console.log('⛔ Execution paused');
+    console.log(JSON.stringify(state, null, 2));
+  });
+
+program
+  .command('control:resume')
+  .description('Disable emergency kill-switch and resume execution')
+  .action(() => {
+    const state = executionGuard.resume();
+    void auditSink.write({
+      category: 'control-plane',
+      action: 'resume',
+      level: 'info',
+      message: 'Execution resumed by operator',
+    });
+    console.log('✅ Execution resumed');
+    console.log(JSON.stringify(state, null, 2));
+  });
+
+program
+  .command('audit:tail')
+  .description('Show recent audit records')
+  .option('-n, --limit <count>', 'Number of records', '20')
+  .action(async (options) => {
+    const limit = Math.max(1, parseInt(options.limit, 10) || 20);
+    const records = await auditSink.list(limit);
+    console.log(`🧾 Audit log (${records.length} records)`);
+    console.log(`File: ${getAuditFilePath()}`);
+    records.forEach((record) => {
+      console.log(
+        `[${record.timestamp}] ${record.level.toUpperCase()} ${record.category}/${record.action} ` +
+          `hash=${record.hash.slice(0, 12)}...`
+      );
+    });
+  });
+
+program
+  .command('audit:verify')
+  .description('Verify append-only audit hash chain')
+  .action(async () => {
+    const { verifyAuditChain } = await import('../sdk/audit');
+    const records = await auditSink.list();
+    const valid = verifyAuditChain(records);
+    if (!valid) {
+      console.error('❌ Audit chain integrity check failed');
+      process.exit(1);
+    }
+    console.log(`✅ Audit chain valid (${records.length} records)`);
+  });
+
+program
+  .command('policy:show')
+  .description('Show active policy and version history')
+  .action(() => {
+    console.log('📜 Policy Registry');
+    console.log(`File: ${getPolicyFilePath()}`);
+    console.log(`Active version: ${policyRegistry.getActiveVersion() ?? 'none'}`);
+    console.log(`History entries: ${policyRegistry.getHistory().length}`);
+    console.log('Active policy:');
+    console.log(JSON.stringify(policyRegistry.getActivePolicy(), null, 2));
+  });
+
+program
+  .command('policy:apply')
+  .description('Sign and apply a new policy version from JSON file')
+  .requiredOption('-f, --file <path>', 'Path to policy JSON')
+  .option('-k, --key <key>', 'Private key (or use default)')
+  .option('-d, --description <text>', 'Policy description')
+  .action(async (options) => {
+    const config = loadConfig();
+    const privateKey = resolvePrivateKey(options.key, config);
+    if (!privateKey) {
+      console.error('❌ No private key provided. Use --key or set a default wallet.');
+      process.exit(1);
+    }
+
+    const sourcePath = path.resolve(options.file);
+    if (!fs.existsSync(sourcePath)) {
+      console.error(`❌ Policy file not found: ${sourcePath}`);
+      process.exit(1);
+    }
+
+    const policy = JSON.parse(fs.readFileSync(sourcePath, 'utf-8')) as ActionPolicy;
+    const latestVersion = policyRegistry.getActiveVersion() ?? 0;
+    const document: PolicyDocument = {
+      version: latestVersion + 1,
+      previousVersion: latestVersion || undefined,
+      createdAt: new Date().toISOString(),
+      description: options.description,
+      policy,
+    };
+
+    const signed = policyRegistry.createAndApplyPolicy(document, privateKey);
+    await auditSink.write({
+      category: 'policy',
+      action: 'apply',
+      level: 'info',
+      message: 'Signed policy applied',
+      metadata: {
+        version: document.version,
+        previousVersion: document.previousVersion,
+        signer: signed.signer,
+      },
+    });
+    console.log(`✅ Policy v${document.version} applied`);
+    console.log(`Signer: ${signed.signer}`);
+  });
+
+program
+  .command('policy:rollback')
+  .description('Rollback active policy pointer to a previous version')
+  .requiredOption('-v, --version <number>', 'Version to activate')
+  .action(async (options) => {
+    const version = parseInt(options.version, 10);
+    if (!Number.isFinite(version) || version <= 0) {
+      console.error('❌ Version must be a positive integer');
+      process.exit(1);
+    }
+
+    policyRegistry.rollback(version);
+    await auditSink.write({
+      category: 'policy',
+      action: 'rollback',
+      level: 'warn',
+      message: 'Policy rolled back',
+      metadata: { version },
+    });
+    console.log(`✅ Active policy rolled back to v${version}`);
   });
 
 program.parse();

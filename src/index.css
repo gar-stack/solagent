@@ -73,3 +73,59 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  @keyframes card-enter {
+    0% {
+      opacity: 0;
+      transform: translateY(18px) scale(0.98);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes card-float-a {
+    0%, 100% {
+      transform: translateY(0) rotate(-0.8deg);
+    }
+    50% {
+      transform: translateY(-8px) rotate(0.3deg);
+    }
+  }
+
+  @keyframes card-float-b {
+    0%, 100% {
+      transform: translateY(0) rotate(0.6deg);
+    }
+    50% {
+      transform: translateY(10px) rotate(-0.2deg);
+    }
+  }
+
+  @keyframes card-float-c {
+    0%, 100% {
+      transform: translateY(0) rotate(-0.4deg);
+    }
+    50% {
+      transform: translateY(-10px) rotate(0.5deg);
+    }
+  }
+
+  .animate-card-enter {
+    animation: card-enter 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .animate-card-float-a {
+    animation: card-float-a 5s ease-in-out infinite;
+  }
+
+  .animate-card-float-b {
+    animation: card-float-b 5.7s ease-in-out infinite;
+  }
+
+  .animate-card-float-c {
+    animation: card-float-c 6.2s ease-in-out infinite;
+  }
+}

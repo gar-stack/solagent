@@ -7,3 +7,5 @@ dist-cli/
 frontend/dist/
 frontend/node_modules/
 .DS_Store
+.solagent
+.solagent.json

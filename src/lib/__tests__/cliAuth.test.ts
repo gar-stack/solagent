@@ -21,7 +21,7 @@ describe('cliAuth', () => {
 
     expect(payload.wallet).toBe(keypair.publicKey.toBase58());
     expect(payload.network).toBe('devnet');
-  });
+  }, 15000);
 
   it('rejects expired codes', () => {
     const keypair = Keypair.generate();

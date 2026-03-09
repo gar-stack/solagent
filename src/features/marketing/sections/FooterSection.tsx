@@ -125,12 +125,12 @@ export function Footer() {
               </li>
               <li>
                 <a 
-                  href="https://github.com/gar-stack/solagent/blob/main/docs/PRODUCTION_TASKS.md" 
+                  href="https://github.com/gar-stack/solagent/blob/main/docs/DEEP_DIVE.md" 
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-slate-400 hover:text-white transition-colors inline-flex items-center"
                 >
-                  Production Tasks
+                  Deep Dive
                   <ExternalLink className="w-3 h-3 ml-1" />
                 </a>
               </li>

@@ -23,6 +23,9 @@ https://superteam.fun/earn/listing/defi-developer-challenge-agentic-wallets-for-
 - Agent framework with risk checks (confidence threshold, allowed actions, cooldown, token lists)
 - Trading bot and LP bot prototypes (decision logic currently mock/simulated)
 - Route-based web app (`/`, `/dashboard`, `/docs`) with protected dashboard access
+- Signed policy lifecycle with versioned apply/rollback support
+- Append-only audit log chain with integrity verification
+- Global emergency kill-switch for managed CLI execution paths
 
 ## Important Status Notes
 
@@ -35,6 +38,7 @@ https://superteam.fun/earn/listing/defi-developer-challenge-agentic-wallets-for-
 - `executeDecision` currently executes `transfer` and `hold`; other action types are placeholders.
 - CLI is packaged as a local binary at `dist-cli/solagent.cjs` via `npm run build:cli`.
 - CLI default wallet storage supports encrypted-at-rest config via `SOLAGENT_MASTER_PASSWORD`.
+- CLI exposes `policy:*`, `audit:*`, and `control:*` commands for control-plane operations.
 - Initial unit tests are available for policy and CLI auth verification.
 
 ## Quick Start
@@ -68,6 +72,20 @@ node dist-cli/solagent.cjs --help
 # Optional: install local binary in your shell
 npm link
 solagent --help
+
+# Control plane
+solagent control:status
+solagent control:pause --reason "manual stop"
+solagent control:resume
+
+# Policy lifecycle
+solagent policy:apply --file ./policy.json
+solagent policy:show
+solagent policy:rollback --version 1
+
+# Audit trail
+solagent audit:tail --limit 20
+solagent audit:verify
 ```
 
 ## SDK Example

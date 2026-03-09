@@ -60,6 +60,7 @@ interface DevnetStats {
 }
 
 const DEVNET_FALLBACK_ADDRESS = '11111111111111111111111111111111';
+const DASHBOARD_KILL_SWITCH_KEY = 'solagent.dashboard.killSwitch';
 
 const AGENT_BASE: AgentStatus[] = [
   {
@@ -105,6 +106,10 @@ export function Dashboard() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [devnetStats, setDevnetStats] = useState<DevnetStats | null>(null);
+  const [killSwitchEnabled, setKillSwitchEnabled] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem(DASHBOARD_KILL_SWITCH_KEY) === 'on';
+  });
   const { address, balance } = useMasterWallet();
 
   useEffect(() => {
@@ -212,6 +217,11 @@ export function Dashboard() {
   };
 
   const toggleAgent = (agentId: string) => {
+    if (killSwitchEnabled) {
+      toast.error('Execution paused. Disable emergency stop before starting or stopping agents.');
+      return;
+    }
+
     const targetAgent = agents.find((agent) => agent.id === agentId);
     if (!targetAgent) return;
 
@@ -234,6 +244,18 @@ export function Dashboard() {
     toast.info(`${nextState === 'running' ? 'Started' : 'Stopped'} ${updatedName}`);
   };
 
+  const toggleKillSwitch = () => {
+    const next = !killSwitchEnabled;
+    setKillSwitchEnabled(next);
+    if (next) {
+      window.localStorage.setItem(DASHBOARD_KILL_SWITCH_KEY, 'on');
+      toast.error('Emergency stop enabled: execution controls are locked.');
+    } else {
+      window.localStorage.removeItem(DASHBOARD_KILL_SWITCH_KEY);
+      toast.success('Emergency stop disabled: execution controls restored.');
+    }
+  };
+
   const totalBalance = agents.reduce((sum, a) => sum + a.balance, 0);
   const totalProfit = agents.reduce((sum, a) => sum + a.profit, 0);
   const runningAgents = agents.filter((a) => a.status === 'running').length;
@@ -250,6 +272,13 @@ export function Dashboard() {
             <Wifi className="h-3.5 w-3.5" />
             Master Wallet Active
           </div>
+          <Button
+            variant={killSwitchEnabled ? 'destructive' : 'outline'}
+            className={killSwitchEnabled ? '' : 'border-amber-500/40 text-amber-200 hover:bg-amber-500/20'}
+            onClick={toggleKillSwitch}
+          >
+            {killSwitchEnabled ? 'Emergency Stop Active' : 'Enable Emergency Stop'}
+          </Button>
         </div>
 
         <Card className="mb-8 border-slate-800 bg-gradient-to-r from-slate-900/90 to-slate-800/80 backdrop-blur">

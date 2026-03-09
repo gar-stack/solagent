@@ -40,6 +40,24 @@ npm run build:cli
 node dist-cli/solagent.cjs --help
 ```
 
+## Milestone 1 Control Plane
+
+```bash
+# Emergency stop / resume
+node dist-cli/solagent.cjs control:pause --reason "incident response"
+node dist-cli/solagent.cjs control:status
+node dist-cli/solagent.cjs control:resume
+
+# Policy lifecycle
+node dist-cli/solagent.cjs policy:apply --file ./policy.json
+node dist-cli/solagent.cjs policy:show
+node dist-cli/solagent.cjs policy:rollback --version 1
+
+# Audit verification
+node dist-cli/solagent.cjs audit:tail --limit 20
+node dist-cli/solagent.cjs audit:verify
+```
+
 ## Create a Wallet (SDK)
 
 ```ts

@@ -45,17 +45,17 @@ export function DocsPortal() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <Card className="bg-slate-900 border-slate-800">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2 text-lg">
-                <TerminalSquare className="w-5 h-5 text-cyan-300" />
-                CLI and Dashboard
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="text-slate-300 text-sm">
-              Use signed CLI access codes to authorize dashboard controls without exposing private keys in-browser.
-            </CardContent>
-          </Card>
+        <Card className="bg-slate-900 border-slate-800">
+          <CardHeader>
+            <CardTitle className="text-white flex items-center gap-2 text-lg">
+              <TerminalSquare className="w-5 h-5 text-cyan-300" />
+              CLI and Dashboard
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-slate-300 text-sm">
+              Dashboard requires connected master wallet. CLI and SDK remain first-class paths for headless operation and automated workflows.
+          </CardContent>
+        </Card>
           <Card className="bg-slate-900 border-slate-800">
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2 text-lg">
@@ -112,9 +112,9 @@ export function DocsPortal() {
             </a>
           </Button>
           <Button variant="outline" className="border-slate-700 text-slate-200 hover:bg-slate-800" asChild>
-            <a href="https://github.com/gar-stack/solagent/blob/main/docs/PRODUCTION_TASKS.md" target="_blank" rel="noopener noreferrer">
+            <a href="https://github.com/gar-stack/solagent/blob/main/docs/DEEP_DIVE.md" target="_blank" rel="noopener noreferrer">
               <Workflow className="w-4 h-4 mr-2" />
-              Production Tasks
+              Deep Dive
               <ExternalLink className="w-3 h-3 ml-2" />
             </a>
           </Button>

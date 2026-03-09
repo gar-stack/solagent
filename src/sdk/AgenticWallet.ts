@@ -19,11 +19,15 @@ import {
 } from '@solana/spl-token';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
+import type { AuditSink } from './audit';
+import type { ExecutionGuard } from './control';
 
 export interface WalletConfig {
   network: 'devnet' | 'mainnet-beta' | 'testnet';
   rpcUrl?: string;
   commitment?: 'processed' | 'confirmed' | 'finalized';
+  auditSink?: AuditSink;
+  executionGuard?: ExecutionGuard;
 }
 
 export interface TransactionRequest {
@@ -69,6 +73,8 @@ export class AgenticWallet {
 
   private readonly retryAttempts = 3;
   private readonly retryBaseDelayMs = 400;
+  private readonly auditSink?: AuditSink;
+  private readonly executionGuard?: ExecutionGuard;
 
   constructor(config: WalletConfig, privateKey?: string) {
     this.config = {
@@ -79,6 +85,8 @@ export class AgenticWallet {
     // Initialize connection
     const endpoint = config.rpcUrl || this.getDefaultEndpoint(config.network);
     this.connection = new Connection(endpoint, this.config.commitment);
+    this.auditSink = config.auditSink;
+    this.executionGuard = config.executionGuard;
 
     // Initialize keypair
     if (privateKey) {
@@ -190,6 +198,7 @@ export class AgenticWallet {
 
   // Transfer SOL
   async transferSol(to: string, amount: number, options?: SendOptions): Promise<TransactionSignature> {
+    this.assertExecutionAllowed('wallet.transferSol');
     const toPublicKey = new PublicKey(to);
     const lamports = amount * LAMPORTS_PER_SOL;
 
@@ -210,6 +219,15 @@ export class AgenticWallet {
       status: 'success',
       details: { to, amount },
     });
+    await this.auditSink?.write({
+      category: 'wallet',
+      action: 'transfer-sol',
+      level: 'info',
+      actor: this.getAddress(),
+      target: to,
+      message: 'SOL transfer confirmed',
+      metadata: { amount, signature },
+    });
 
     return signature;
   }
@@ -221,6 +239,7 @@ export class AgenticWallet {
     amount: number,
     decimals: number = 6
   ): Promise<TransactionSignature> {
+    this.assertExecutionAllowed('wallet.transferToken');
     const toPublicKey = new PublicKey(to);
     const mintPublicKey = new PublicKey(mint);
     const tokenAmount = amount * Math.pow(10, decimals);
@@ -271,12 +290,22 @@ export class AgenticWallet {
       status: 'success',
       details: { to, mint, amount },
     });
+    await this.auditSink?.write({
+      category: 'wallet',
+      action: 'transfer-token',
+      level: 'info',
+      actor: this.getAddress(),
+      target: to,
+      message: 'SPL token transfer confirmed',
+      metadata: { mint, amount, decimals, signature },
+    });
 
     return signature;
   }
 
   // Request airdrop (devnet only)
   async requestAirdrop(amount: number = 1): Promise<TransactionSignature> {
+    this.assertExecutionAllowed('wallet.requestAirdrop');
     if (this.config.network !== 'devnet' && this.config.network !== 'testnet') {
       throw new Error('Airdrop is only available on devnet or testnet');
     }
@@ -354,8 +383,17 @@ export class AgenticWallet {
 
   // Execute agent decision
   async executeDecision(decision: AgentDecision): Promise<TransactionSignature | null> {
+    this.assertExecutionAllowed('wallet.executeDecision');
     if (decision.confidence < 0.5) {
       console.log('Decision confidence too low, skipping execution');
+      await this.auditSink?.write({
+        category: 'execution',
+        action: decision.action,
+        level: 'warn',
+        actor: this.getAddress(),
+        message: 'Decision skipped due to low confidence',
+        metadata: { confidence: decision.confidence, decision },
+      });
       return null;
     }
 
@@ -373,11 +411,31 @@ export class AgenticWallet {
         }
       case 'hold':
         console.log('Holding position as per agent decision');
+        await this.auditSink?.write({
+          category: 'execution',
+          action: 'hold',
+          level: 'info',
+          actor: this.getAddress(),
+          message: 'Hold decision acknowledged',
+          metadata: { decision },
+        });
         return null;
       default:
         console.log(`Action ${decision.action} not yet implemented`);
+        await this.auditSink?.write({
+          category: 'execution',
+          action: decision.action,
+          level: 'warn',
+          actor: this.getAddress(),
+          message: 'Decision action is not implemented',
+          metadata: { decision },
+        });
         return null;
     }
+  }
+
+  private assertExecutionAllowed(context: string): void {
+    this.executionGuard?.assertAllowed(context);
   }
 
   // Static method to create wallet from mnemonic (simplified)
