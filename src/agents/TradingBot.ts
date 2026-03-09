@@ -1,5 +1,6 @@
 import { AIAgent, type AgentConfig, type MarketData } from '../sdk/AIAgent';
 import { type AgentDecision, type WalletState } from '../sdk/AgenticWallet';
+import { fetchSolMarketSnapshot } from '../lib/marketData';
 
 interface PriceHistory {
   timestamp: number;
@@ -32,13 +33,19 @@ export class TradingBot extends AIAgent {
     this.strategy = strategy;
   }
 
-  // Simulate market analysis (in production, this would fetch real data)
+  // Fetch market analysis from public data providers.
   async analyzeMarket(tokenMint: string = 'SOL'): Promise<MarketData> {
-    // Simulate fetching market data
-    // In production, this would use Jupiter API, Birdeye, or similar
-    const mockPrice = this.getMockPrice(tokenMint);
-    const mockVolume = Math.random() * 1000000;
-    const mockChange = (Math.random() - 0.5) * 10;
+    const snapshot = tokenMint === 'SOL'
+      ? await fetchSolMarketSnapshot()
+      : {
+          source: 'coingecko-only' as const,
+          priceUsd: this.getMockPrice(tokenMint),
+          volume24hUsd: 0,
+          priceChange24h: 0,
+          estimatedLiquidityUsd: 0,
+          timestamp: Date.now(),
+        };
+    const currentPrice = snapshot.priceUsd;
 
     // Store price history
     if (!this.priceHistory.has(tokenMint)) {
@@ -47,7 +54,7 @@ export class TradingBot extends AIAgent {
     
     this.priceHistory.get(tokenMint)!.push({
       timestamp: Date.now(),
-      price: mockPrice,
+      price: currentPrice,
     });
 
     // Keep only last 100 prices
@@ -57,10 +64,10 @@ export class TradingBot extends AIAgent {
     }
 
     return {
-      price: mockPrice,
-      volume24h: mockVolume,
-      priceChange24h: mockChange,
-      liquidity: mockVolume * 0.1,
+      price: currentPrice,
+      volume24h: snapshot.volume24hUsd,
+      priceChange24h: snapshot.priceChange24h,
+      liquidity: snapshot.estimatedLiquidityUsd,
     };
   }
 

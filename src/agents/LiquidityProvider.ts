@@ -1,5 +1,6 @@
 import { AIAgent, type AgentConfig, type MarketData } from '../sdk/AIAgent';
 import { type AgentDecision, type WalletState } from '../sdk/AgenticWallet';
+import { fetchSolMarketSnapshot } from '../lib/marketData';
 
 export interface LiquidityPool {
   id: string;
@@ -93,15 +94,18 @@ export class LiquidityProvider extends AIAgent {
 
   // Analyze liquidity pool
   async analyzeMarket(_poolId?: string): Promise<MarketData> {
-    // Update pool metrics with some randomness
+    const snapshot = await fetchSolMarketSnapshot();
+    const volatility = Math.min(Math.abs(snapshot.priceChange24h) / 100, 0.2);
+    const volumeFactor = snapshot.volume24hUsd > 0 ? Math.min(snapshot.volume24hUsd / 5_000_000_000, 2) : 1;
+
+    // Update pool metrics from market conditions rather than randomness.
     this.pools.forEach(pool => {
-      const apyChange = (Math.random() - 0.5) * 2;
+      const apyChange = (pool.volume24h / pool.tvl) * 2 * volumeFactor - volatility;
       pool.apy = Math.max(0, pool.apy + apyChange);
-      
-      const volumeChange = (Math.random() - 0.5) * 0.2;
-      pool.volume24h = pool.volume24h * (1 + volumeChange);
-      
-      const ilChange = (Math.random() - 0.5) * 0.01;
+
+      pool.volume24h = Math.max(0, pool.volume24h * (1 + (volumeFactor - 1) * 0.05));
+
+      const ilChange = volatility * 0.1;
       pool.impermanentLoss24h = Math.max(0, pool.impermanentLoss24h + ilChange);
     });
 
@@ -110,9 +114,9 @@ export class LiquidityProvider extends AIAgent {
     const avgApy = Array.from(this.pools.values()).reduce((sum, p) => sum + p.apy, 0) / this.pools.size;
 
     return {
-      price: avgApy,
-      volume24h: totalTvl,
-      priceChange24h: 0,
+      price: snapshot.priceUsd || avgApy,
+      volume24h: snapshot.volume24hUsd || totalTvl,
+      priceChange24h: snapshot.priceChange24h,
       liquidity: totalTvl,
     };
   }

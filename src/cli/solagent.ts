@@ -11,6 +11,7 @@ import { FileAuditSink, getAuditFilePath } from './auditFileSink';
 import { FilePolicyRegistry, getPolicyFilePath } from './policyStore';
 import type { PolicyDocument } from '../sdk/policyLifecycle';
 import type { ActionPolicy } from '../sdk/policy';
+import { telemetry } from '../lib/telemetry';
 
 const program = new Command();
 
@@ -415,6 +416,20 @@ program
       console.error(`❌ Failed to generate auth code: ${error instanceof Error ? error.message : 'unknown error'}`);
       process.exit(1);
     }
+  });
+
+program
+  .command('metrics:show')
+  .description('Show in-process telemetry counters and latency summaries')
+  .action(() => {
+    console.log('📈 Telemetry Counters');
+    telemetry.getCounters().forEach((counter) => {
+      console.log(`- ${counter.name}: ${counter.value}`);
+    });
+    console.log('\n⏱️ Telemetry Histograms');
+    telemetry.getHistogramSummary().forEach((entry) => {
+      console.log(`- ${entry.name}: count=${entry.count}, p50=${entry.p50.toFixed(2)}, p95=${entry.p95.toFixed(2)}`);
+    });
   });
 
 program

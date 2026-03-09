@@ -56,6 +56,9 @@ node dist-cli/solagent.cjs policy:rollback --version 1
 # Audit verification
 node dist-cli/solagent.cjs audit:tail --limit 20
 node dist-cli/solagent.cjs audit:verify
+
+# Runtime telemetry
+node dist-cli/solagent.cjs metrics:show
 ```
 
 ## Create a Wallet (SDK)

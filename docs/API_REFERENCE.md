@@ -11,6 +11,8 @@ Complete API documentation for the SolAgent SDK.
 - [Policy Registry](#policy-registry)
 - [Audit](#audit)
 - [Execution Guard](#execution-guard)
+- [Market Data](#market-data)
+- [Telemetry](#telemetry)
 
 ---
 
@@ -375,6 +377,33 @@ class InMemoryExecutionGuard implements ExecutionGuard {
   pause(reason?: string): void;
   resume(): void;
 }
+```
+
+---
+
+## Market Data
+
+```typescript
+fetchSolMarketSnapshot(): Promise<{
+  source: 'jupiter+coingecko' | 'coingecko-only';
+  priceUsd: number;
+  priceChange24h: number;
+  volume24hUsd: number;
+  estimatedLiquidityUsd: number;
+  timestamp: number;
+}>
+```
+
+---
+
+## Telemetry
+
+```typescript
+telemetry.increment(name: string, amount?: number): void
+telemetry.observe(name: string, value: number): void
+telemetry.event(entry: TelemetryEvent): void
+telemetry.getCounters(): Array<{ name: string; value: number }>
+telemetry.getHistogramSummary(): Array<{ name: string; count: number; p50: number; p95: number }>
 ```
 
 #### getPools()

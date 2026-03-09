@@ -3,6 +3,7 @@ import { evaluateDecisionPolicy, type ActionPolicy } from './policy';
 import type { AuditSink } from './audit';
 import type { PolicyRegistry } from './policyLifecycle';
 import type { ExecutionGuard } from './control';
+import { telemetry } from '../lib/telemetry';
 
 export interface AgentConfig {
   name: string;
@@ -98,6 +99,7 @@ export abstract class AIAgent {
 
   // Main execution cycle
   protected async runCycle(): Promise<void> {
+    const cycleStart = Date.now();
     try {
       this.config.executionGuard?.assertAllowed(`agent:${this.config.name}:runCycle`);
       // Check cooldown
@@ -114,6 +116,14 @@ export abstract class AIAgent {
 
       // Make decision
       const decision = await this.makeDecision(walletState, marketData);
+      telemetry.increment('agent.decisions.generated');
+      telemetry.event({
+        name: 'agent.decision.generated',
+        at: new Date().toISOString(),
+        level: 'info',
+        tags: { agent: this.config.name, action: decision.action },
+        fields: { confidence: decision.confidence },
+      });
 
       // Log decision
       this.decisionLog.push({
@@ -145,6 +155,7 @@ export abstract class AIAgent {
           this.decisionLog[this.decisionLog.length - 1].signature = signature;
           
           console.log(`Executed ${decision.action}: ${signature}`);
+          telemetry.increment('agent.decisions.executed');
           await this.config.auditSink?.write({
             category: 'execution',
             action: decision.action,
@@ -160,6 +171,13 @@ export abstract class AIAgent {
       }
     } catch (error) {
       console.error(`Error in agent cycle: ${error}`);
+      telemetry.increment('agent.cycles.error');
+      telemetry.event({
+        name: 'agent.cycle.error',
+        at: new Date().toISOString(),
+        level: 'error',
+        tags: { agent: this.config.name },
+      });
       await this.config.auditSink?.write({
         category: 'execution',
         action: 'runCycle',
@@ -171,6 +189,10 @@ export abstract class AIAgent {
           error: error instanceof Error ? error.message : String(error),
         },
       });
+    } finally {
+      const durationMs = Date.now() - cycleStart;
+      telemetry.observe('agent.cycle.duration_ms', durationMs);
+      telemetry.increment('agent.cycles.total');
     }
   }
 
@@ -205,6 +227,13 @@ export abstract class AIAgent {
     const policyResult = evaluateDecisionPolicy(decision, mergedPolicy);
     if (!policyResult.allowed) {
       console.log(`Policy blocked decision: ${policyResult.reason}`);
+      telemetry.increment('agent.decisions.blocked');
+      telemetry.event({
+        name: 'agent.decision.blocked',
+        at: new Date().toISOString(),
+        level: 'warn',
+        tags: { agent: this.config.name, action: decision.action },
+      });
       return false;
     }
 

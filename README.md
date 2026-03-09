@@ -34,11 +34,12 @@ https://superteam.fun/earn/listing/defi-developer-challenge-agentic-wallets-for-
 - Web dashboard no longer accepts CLI auth token/code input.
 - CLI/SDK workflows remain available for users who prefer non-web operation.
 - The dashboard now reads live devnet balances, recent signatures, and network stats via RPC.
-- Trading and liquidity strategies currently use simulated market data.
+- Trading/LP analyzers now ingest live SOL market signals (Jupiter quote + CoinGecko metrics) with fallback handling.
 - `executeDecision` currently executes `transfer` and `hold`; other action types are placeholders.
 - CLI is packaged as a local binary at `dist-cli/solagent.cjs` via `npm run build:cli`.
 - CLI default wallet storage supports encrypted-at-rest config via `SOLAGENT_MASTER_PASSWORD`.
 - CLI exposes `policy:*`, `audit:*`, and `control:*` commands for control-plane operations.
+- CI pipeline now enforces lint, unit tests, and artifact builds on push/PR.
 - Initial unit tests are available for policy and CLI auth verification.
 
 ## Quick Start
