@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Connection, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
+import { useEffect, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -52,8 +51,26 @@ interface DevnetStats {
   averageBalance: number;
 }
 
+interface RpcResponse<T> {
+  result: T;
+  error?: {
+    message: string;
+  };
+}
+
+interface RpcSignatureInfo {
+  signature: string;
+  err: unknown;
+  blockTime: number | null;
+}
+
+interface RpcBalanceResult {
+  value: number;
+}
+
 const DEVNET_RPC_URL = import.meta.env.VITE_SOLANA_RPC_URL || 'https://api.devnet.solana.com';
 const DEVNET_FALLBACK_ADDRESS = '11111111111111111111111111111111';
+const LAMPORTS_PER_SOL = 1_000_000_000;
 
 const AGENT_BASE: AgentStatus[] = [
   {
@@ -100,22 +117,36 @@ export function Dashboard() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [devnetStats, setDevnetStats] = useState<DevnetStats | null>(null);
 
-  const connection = useMemo(() => {
-    return new Connection(DEVNET_RPC_URL, 'confirmed');
-  }, []);
-
   useEffect(() => {
     let isMounted = true;
+
+    const rpcCall = async <T,>(method: string, params: unknown[] = []): Promise<T> => {
+      const response = await fetch(DEVNET_RPC_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method,
+          params,
+        }),
+      });
+
+      const json = (await response.json()) as RpcResponse<T>;
+      if (json.error) {
+        throw new Error(json.error.message);
+      }
+      return json.result;
+    };
 
     const loadDevnetData = async () => {
       try {
         const hydratedAgents = await Promise.all(
           AGENT_BASE.map(async (agent) => {
             try {
-              const pubkey = new PublicKey(agent.walletAddress);
               const [balanceLamports, signatures] = await Promise.all([
-                connection.getBalance(pubkey),
-                connection.getSignaturesForAddress(pubkey, { limit: 8 }),
+                rpcCall<RpcBalanceResult>('getBalance', [agent.walletAddress, { commitment: 'confirmed' }]),
+                rpcCall<RpcSignatureInfo[]>('getSignaturesForAddress', [agent.walletAddress, { limit: 8 }]),
               ]);
 
               const succeeded = signatures.filter((sig) => sig.err === null).length;
@@ -123,7 +154,7 @@ export function Dashboard() {
 
               return {
                 ...agent,
-                balance: balanceLamports / LAMPORTS_PER_SOL,
+                balance: balanceLamports.value / LAMPORTS_PER_SOL,
                 totalDecisions: signatures.length,
                 executedDecisions: succeeded,
                 lastAction: last ? formatDistanceToNow(new Date(last * 1000), { addSuffix: true }) : 'No recent tx',
@@ -140,8 +171,7 @@ export function Dashboard() {
         const allSigs = await Promise.all(
           hydratedAgents.map(async (agent) => {
             try {
-              const pubkey = new PublicKey(agent.walletAddress);
-              const sigs = await connection.getSignaturesForAddress(pubkey, { limit: 4 });
+              const sigs = await rpcCall<RpcSignatureInfo[]>('getSignaturesForAddress', [agent.walletAddress, { limit: 4 }]);
               return sigs.map((sig) => ({ agent: agent.name, sig }));
             } catch {
               return [];
@@ -152,7 +182,7 @@ export function Dashboard() {
         let flatSigs = allSigs.flat();
 
         if (flatSigs.length === 0) {
-          const fallback = await connection.getSignaturesForAddress(new PublicKey(DEVNET_FALLBACK_ADDRESS), { limit: 6 });
+          const fallback = await rpcCall<RpcSignatureInfo[]>('getSignaturesForAddress', [DEVNET_FALLBACK_ADDRESS, { limit: 6 }]);
           flatSigs = fallback.map((sig) => ({ agent: 'Devnet Network', sig }));
         }
 
@@ -169,10 +199,7 @@ export function Dashboard() {
             signature: `${entry.sig.signature.slice(0, 6)}...${entry.sig.signature.slice(-6)}`,
           }));
 
-        const [slot, blockHeight] = await Promise.all([
-          connection.getSlot('confirmed'),
-          connection.getBlockHeight('confirmed'),
-        ]);
+        const [slot, blockHeight] = await Promise.all([rpcCall<number>('getSlot', [{ commitment: 'confirmed' }]), rpcCall<number>('getBlockHeight', [{ commitment: 'confirmed' }])]);
 
         const avgBalance = hydratedAgents.reduce((acc, a) => acc + a.balance, 0) / hydratedAgents.length;
 
@@ -203,7 +230,7 @@ export function Dashboard() {
       isMounted = false;
       window.clearInterval(pollId);
     };
-  }, [connection]);
+  }, []);
 
   const copyAddress = async (address: string) => {
     await navigator.clipboard.writeText(address);
